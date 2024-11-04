@@ -57,20 +57,22 @@ class VelogSync:
             soup = BeautifulSoup(response.text, 'html.parser')
             
             # 시리즈 정보 찾기
-            series_section = soup.find('div', class_='series-item')
+            series_section = soup.find('div', class_='sc-jIkXHa')
             if series_section:
-                series_name = series_section.find('div', class_='series-name').text.strip()
-                series_wrapper = soup.find('div', class_='series-wrapper')
+                # 시리즈 제목
+                series_name = series_section.find('h2').find('a').text.strip()
                 
-                if series_wrapper:
+                # 시리즈 번호
+                series_number = series_section.find('div', class_='series-number')
+                if series_number:
                     # 현재 포스트 번호와 총 포스트 수 찾기
-                    series_info = series_wrapper.find('div', class_='series-number').text.strip()
-                    current_number = series_info.split('/')[0].strip()
-                    total_posts = series_info.split('/')[1].strip()
+                    numbers = series_number.text.strip().split('/')
+                    current_number = numbers[0].strip()
+                    total_posts = numbers[1].strip()
                     
                     return {
                         "series_name": series_name,
-                        "series_order": current_number,
+                        "series_order": f"{current_number}/{total_posts}",
                         "total_in_series": total_posts
                     }
         except Exception as e:
@@ -83,9 +85,9 @@ class VelogSync:
         """
         tags = []
         try:
-            tag_list = soup.find('div', class_='tags-wrapper')
+            tag_list = soup.find('div', class_='sc-cZMNgc')
             if tag_list:
-                tags = [tag.text.strip() for tag in tag_list.find_all('a', class_='tag')]
+                tags = [tag.text.strip() for tag in tag_list.find_all('a', class_='sc-dtMgUX')]
         except Exception as e:
             print(f"태그 정보 가져오기 실패: {str(e)}")
         return tags
