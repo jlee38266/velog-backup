@@ -128,25 +128,14 @@ class VelogSync:
             post_metadata = {
                 'title': entry.title,
                 'date': date_str,
-                'link': {
-                    'type': 'link',
-                    'value': entry.link
-                },
-                'tags': tags if tags else [],  # 빈 리스트로 초기화하여 일관성 유지
+                'link': entry.link,
+                'tags': tags,
                 'last_modified': current_date
             }
 
             # 시리즈 정보가 있으면 메타데이터에 추가
             if series_info:
-                # 시리즈 정보도 구조화하여 추가
-                series_metadata = {
-                    'series': {
-                        'name': series_info['series_name'],
-                        'order': series_info['series_order'],
-                        'total': series_info['total_in_series']
-                    }
-                }
-                post_metadata.update(series_metadata)
+                post_metadata.update(series_info)
 
             # HTML을 마크다운으로 변환
             markdown_content = self.convert_html_to_markdown(entry.description)
@@ -167,19 +156,10 @@ class VelogSync:
 
             # 업데이트 처리
             if update_needed:
-                # frontmatter 생성 시 스타일 지정
+                post_content = frontmatter.Post(markdown_content, **post_metadata)
+                
                 with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write('---\n')  # 시작 구분자
-                    yaml_content = yaml.dump(
-                        post_metadata,
-                        allow_unicode=True,
-                        default_flow_style=False,
-                        indent=2,
-                        sort_keys=False  # 순서 유지
-                    )
-                    f.write(yaml_content)
-                    f.write('---\n\n')  # 종료 구분자
-                    f.write(markdown_content)
+                    f.write(frontmatter.dumps(post_content))
 
                 # Git에 변경사항 추가
                 self.repo.index.add([filepath])
