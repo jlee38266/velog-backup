@@ -27,7 +27,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install feedparser python-frontmatter beautifulsoup4 requests gitpython html2text
     
-- name: Run sync script
+    - name: Run sync script
       env:
         VELOG_USERNAME: ${{ secrets.VELOG_USERNAME }}
         GH_PAT: ${{ secrets.GH_PAT }}
