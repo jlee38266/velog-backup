@@ -13,12 +13,12 @@ jobs:
     
     steps:
     - name: Checkout repository  # 저장소 체크아웃
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0      # 전체 커밋 히스토리 가져오기
 
     - name: Set up Python  # Python 환경 설정
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: '3.x'
     
