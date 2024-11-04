@@ -4,7 +4,7 @@ last_modified: '2024-11-04'
 link: https://velog.io/@jlee38266/Github-Actions
 tags:
 - IT
-- Infra
+- github actions
 title: Github Actions
 ---
 
