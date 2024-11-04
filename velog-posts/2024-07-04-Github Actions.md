@@ -2,7 +2,9 @@
 date: '2024-07-04'
 last_modified: '2024-11-04'
 link: https://velog.io/@jlee38266/Github-Actions
-tags: []
+tags:
+- IT
+- Infra
 title: Github Actions
 ---
 
