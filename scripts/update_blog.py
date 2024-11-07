@@ -170,27 +170,27 @@ class VelogSync:
             is_new_post = True
             needs_rename = False
             last_modified = current_date
+            old_title = None
     
             if existing_filepath and os.path.exists(existing_filepath):
                 is_new_post = False
                 try:
                     existing_post = frontmatter.load(existing_filepath)
                     existing_hash = self.get_content_hash(existing_post.content)
+                    old_title = existing_post.metadata.get('title')
                     
+                    # 내용이 같은지 확인
                     if existing_hash == content_hash:
-                        # 내용이 같으면 기존 last_modified 유지
                         last_modified = existing_post.metadata.get('last_modified', date_str)
-                        
-                        # 제목이 다른 경우 파일 이름만 변경
-                        if existing_post.metadata.get('title') != entry.title:
-                            needs_rename = True
-                    else:
-                        # 내용이 다르면 last_modified 업데이트
-                        last_modified = current_date
+                    
+                    # 제목이 다른 경우 파일 이름 변경 필요
+                    if old_title != entry.title:
+                        needs_rename = True
+                        print(f"제목 변경 감지: {old_title} -> {entry.title}")
                     
                 except Exception as e:
                     print(f"기존 파일 읽기 실패: {str(e)}")
-                    is_new_post = True  # 파일 읽기 실패시 새로 생성
+                    is_new_post = True
     
             # 메타데이터 설정
             post_metadata = {
@@ -201,39 +201,49 @@ class VelogSync:
                 'last_modified': last_modified
             }
     
-            # 시리즈 정보가 있으면 메타데이터에 추가
             if series_info:
                 post_metadata.update(series_info)
     
-            # 파일 경로 설정
+            # 파일 경로 및 이름 처리
             if is_new_post:
                 filename = f"{date_str}-{entry.title.replace('/', '-').replace('\\', '-')}.md"
                 filepath = os.path.join(self.posts_dir, filename)
             else:
-                filepath = existing_filepath
                 if needs_rename:
-                    new_filepath = self.rename_post_file(existing_filepath, entry.title, date_str)
-                    if new_filepath != existing_filepath:
+                    # 새로운 파일명으로 변경
+                    new_filename = f"{date_str}-{entry.title.replace('/', '-').replace('\\', '-')}.md"
+                    new_filepath = os.path.join(self.posts_dir, new_filename)
+                    
+                    try:
+                        # 기존 파일 제거
+                        self.repo.index.remove([existing_filepath])
+                        # 파일 이름 변경
+                        os.rename(existing_filepath, new_filepath)
+                        # 새 파일 추가
+                        self.repo.index.add([new_filepath])
+                        
+                        print(f"파일 이름 변경: {os.path.basename(existing_filepath)} -> {new_filename}")
                         filepath = new_filepath
+                    except Exception as e:
+                        print(f"파일 이름 변경 실패: {str(e)}")
+                        filepath = existing_filepath
+                else:
+                    filepath = existing_filepath
     
             # 포스트 저장
             post_content = frontmatter.Post(markdown_content, **post_metadata)
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(frontmatter.dumps(post_content))
     
-            # Git 변경사항 처리
-            if needs_rename and not is_new_post:
-                if existing_filepath != filepath:
-                    self.repo.index.remove([existing_filepath])
-                    self.repo.index.add([filepath])
-            else:
+            if not needs_rename:
                 self.repo.index.add([filepath])
     
             # Git 커밋
-            action = "Add" if is_new_post else "Update"
-            commit_message = f"{action} post: {entry.title} ({current_date})"
             if needs_rename:
-                commit_message = f"Rename post: {entry.title} ({current_date})"
+                commit_message = f"Rename post: {old_title} -> {entry.title} ({current_date})"
+            else:
+                action = "Add" if is_new_post else "Update"
+                commit_message = f"{action} post: {entry.title} ({current_date})"
                 
             self.repo.index.commit(
                 commit_message,
