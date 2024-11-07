@@ -317,7 +317,6 @@ class VelogSync:
     
             # 메타데이터 설정
             post_metadata = {
-                'title': entry.title,
                 'date': date_str,
                 'link': entry.link,
                 'tags': tags,
