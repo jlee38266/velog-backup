@@ -130,7 +130,7 @@ class VelogSync:
                 'date': date_str,
                 'link': entry.link,
                 'tags': tags,
-                'last_modified': current_date
+                'last_modified': current_date  # 기본값으로 현재 날짜 설정
             }
 
             # 시리즈 정보가 있으면 메타데이터에 추가
@@ -151,6 +151,12 @@ class VelogSync:
                     existing_hash = self.get_content_hash(existing_post.content)
                     if existing_hash == content_hash:
                         update_needed = False
+                        # 기존 메타데이터에서 last_modified 필드 유지
+                        if 'last_modified' in existing_post.metadata:
+                            post_metadata['last_modified'] = existing_post.metadata['last_modified']
+                    else:
+                        # 내용이 변경되었으므로 last_modified 업데이트
+                        post_metadata['last_modified'] = current_date
                 except Exception as e:
                     print(f"기존 파일 읽기 실패: {str(e)}")
 
