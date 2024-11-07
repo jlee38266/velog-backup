@@ -115,133 +115,133 @@ class VelogSync:
         """HTML 컨텐츠를 마크다운으로 변환"""
         return self.h2t.handle(html_content)
 
-def rename_post_file(self, old_filepath: str, new_title: str, date_str: str) -> str:
-    """
-    게시물 파일 이름 변경
-    - 제목이 변경된 경우 파일 이름도 함께 변경
-    - Git에서도 파일 이름 변경을 추적
-    """
-    new_filename = f"{date_str}-{new_title.replace('/', '-').replace('\\', '-')}.md"
-    new_filepath = os.path.join(self.posts_dir, new_filename)
-    
-    if old_filepath != new_filepath and os.path.exists(old_filepath):
-        try:
-            # 기존 파일을 Git에서 제거
-            os.rename(old_filepath, new_filepath)
-            
-            # Git에 변경사항 반영
-            self.repo.index.remove([old_filepath])
-            self.repo.index.add([new_filepath])
-            
-            print(f"파일 이름 변경됨: {os.path.basename(old_filepath)} -> {new_filename}")
-            return new_filepath
-        except Exception as e:
-            print(f"파일 이름 변경 중 오류 발생: {str(e)}")
-            return old_filepath
-    return new_filepath
-
-def create_or_update_post(self, entry: feedparser.FeedParserDict) -> bool:
-    """게시글 생성 또는 업데이트"""
-    try:
-        # 게시글 URL로 기존 파일 찾기
-        existing_filepath = self.posts_index.get(entry.link)
+    def rename_post_file(self, old_filepath: str, new_title: str, date_str: str) -> str:
+        """
+        게시물 파일 이름 변경
+        - 제목이 변경된 경우 파일 이름도 함께 변경
+        - Git에서도 파일 이름 변경을 추적
+        """
+        new_filename = f"{date_str}-{new_title.replace('/', '-').replace('\\', '-')}.md"
+        new_filepath = os.path.join(self.posts_dir, new_filename)
         
-        # 날짜 정보 추출
-        date_str = datetime.strptime(
-            entry.published, 
-            '%a, %d %b %Y %H:%M:%S %Z'
-        ).strftime('%Y-%m-%d')
-        
-        # 현재 날짜
-        current_date = datetime.now().strftime('%Y-%m-%d')
-        
-        # 게시글 페이지에서 추가 정보 가져오기
-        response = requests.get(entry.link)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # 태그와 시리즈 정보 가져오기
-        tags = self.get_tags(soup)
-        series_info = self.get_series_info(entry.link)
-
-        # HTML을 마크다운으로 변환
-        markdown_content = self.convert_html_to_markdown(entry.description)
-        content_hash = self.get_content_hash(markdown_content)
-
-        update_needed = True
-        is_new_post = True
-        needs_rename = False
-        last_modified = current_date  # 기본값으로 현재 날짜 설정
-
-        if existing_filepath and os.path.exists(existing_filepath):
-            is_new_post = False
+        if old_filepath != new_filepath and os.path.exists(old_filepath):
             try:
-                existing_post = frontmatter.load(existing_filepath)
-                existing_hash = self.get_content_hash(existing_post.content)
+                # 기존 파일을 Git에서 제거
+                os.rename(old_filepath, new_filepath)
                 
-                # 내용이 같은 경우
-                if existing_hash == content_hash:
-                    # 제목이 다른 경우에만 업데이트 필요
-                    if existing_post.metadata.get('title') != entry.title:
-                        needs_rename = True
-                        update_needed = True
-                    else:
-                        update_needed = False
-                    
-                    # 내용이 같으면 기존 last_modified 유지
-                    last_modified = existing_post.metadata.get('last_modified', date_str)
+                # Git에 변경사항 반영
+                self.repo.index.remove([old_filepath])
+                self.repo.index.add([new_filepath])
                 
+                print(f"파일 이름 변경됨: {os.path.basename(old_filepath)} -> {new_filename}")
+                return new_filepath
             except Exception as e:
-                print(f"기존 파일 읽기 실패: {str(e)}")
-
-        # 메타데이터 설정
-        post_metadata = {
-            'title': entry.title,
-            'date': date_str,
-            'link': entry.link,
-            'tags': tags,
-            'last_modified': last_modified
-        }
-
-        # 시리즈 정보가 있으면 메타데이터에 추가
-        if series_info:
-            post_metadata.update(series_info)
-
-        if update_needed:
-            # 새 게시물이면 새 경로 생성
-            if is_new_post:
-                filename = f"{date_str}-{entry.title.replace('/', '-').replace('\\', '-')}.md"
-                filepath = os.path.join(self.posts_dir, filename)
-            else:
-                filepath = existing_filepath
-                # 제목이 변경된 경우 파일 이름 변경
-                if needs_rename:
-                    new_filepath = self.rename_post_file(existing_filepath, entry.title, date_str)
-                    if new_filepath != existing_filepath:
-                        filepath = new_filepath
-
-            # 포스트 저장
-            post_content = frontmatter.Post(markdown_content, **post_metadata)
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(frontmatter.dumps(post_content))
-
-            # Git 커밋 생성
-            action = "Add" if is_new_post else "Update"
-            commit_message = f"{action} post: {entry.title} ({current_date})"
-            self.repo.index.commit(
-                commit_message,
-                author=git.Actor(self.git_username, self.git_email),
-                committer=git.Actor(self.git_username, self.git_email)
-            )
-
-            # 인덱스 업데이트
-            self.posts_index[entry.link] = filepath
-            return True
-
-        return False
-
-    except Exception as e:
-        print(f"게시글 처리 중 오류 발생: {str(e)}")
-        return False
+                print(f"파일 이름 변경 중 오류 발생: {str(e)}")
+                return old_filepath
+        return new_filepath
+    
+    def create_or_update_post(self, entry: feedparser.FeedParserDict) -> bool:
+        """게시글 생성 또는 업데이트"""
+        try:
+            # 게시글 URL로 기존 파일 찾기
+            existing_filepath = self.posts_index.get(entry.link)
+            
+            # 날짜 정보 추출
+            date_str = datetime.strptime(
+                entry.published, 
+                '%a, %d %b %Y %H:%M:%S %Z'
+            ).strftime('%Y-%m-%d')
+            
+            # 현재 날짜
+            current_date = datetime.now().strftime('%Y-%m-%d')
+            
+            # 게시글 페이지에서 추가 정보 가져오기
+            response = requests.get(entry.link)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # 태그와 시리즈 정보 가져오기
+            tags = self.get_tags(soup)
+            series_info = self.get_series_info(entry.link)
+    
+            # HTML을 마크다운으로 변환
+            markdown_content = self.convert_html_to_markdown(entry.description)
+            content_hash = self.get_content_hash(markdown_content)
+    
+            update_needed = True
+            is_new_post = True
+            needs_rename = False
+            last_modified = current_date  # 기본값으로 현재 날짜 설정
+    
+            if existing_filepath and os.path.exists(existing_filepath):
+                is_new_post = False
+                try:
+                    existing_post = frontmatter.load(existing_filepath)
+                    existing_hash = self.get_content_hash(existing_post.content)
+                    
+                    # 내용이 같은 경우
+                    if existing_hash == content_hash:
+                        # 제목이 다른 경우에만 업데이트 필요
+                        if existing_post.metadata.get('title') != entry.title:
+                            needs_rename = True
+                            update_needed = True
+                        else:
+                            update_needed = False
+                        
+                        # 내용이 같으면 기존 last_modified 유지
+                        last_modified = existing_post.metadata.get('last_modified', date_str)
+                    
+                except Exception as e:
+                    print(f"기존 파일 읽기 실패: {str(e)}")
+    
+            # 메타데이터 설정
+            post_metadata = {
+                'title': entry.title,
+                'date': date_str,
+                'link': entry.link,
+                'tags': tags,
+                'last_modified': last_modified
+            }
+    
+            # 시리즈 정보가 있으면 메타데이터에 추가
+            if series_info:
+                post_metadata.update(series_info)
+    
+            if update_needed:
+                # 새 게시물이면 새 경로 생성
+                if is_new_post:
+                    filename = f"{date_str}-{entry.title.replace('/', '-').replace('\\', '-')}.md"
+                    filepath = os.path.join(self.posts_dir, filename)
+                else:
+                    filepath = existing_filepath
+                    # 제목이 변경된 경우 파일 이름 변경
+                    if needs_rename:
+                        new_filepath = self.rename_post_file(existing_filepath, entry.title, date_str)
+                        if new_filepath != existing_filepath:
+                            filepath = new_filepath
+    
+                # 포스트 저장
+                post_content = frontmatter.Post(markdown_content, **post_metadata)
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(frontmatter.dumps(post_content))
+    
+                # Git 커밋 생성
+                action = "Add" if is_new_post else "Update"
+                commit_message = f"{action} post: {entry.title} ({current_date})"
+                self.repo.index.commit(
+                    commit_message,
+                    author=git.Actor(self.git_username, self.git_email),
+                    committer=git.Actor(self.git_username, self.git_email)
+                )
+    
+                # 인덱스 업데이트
+                self.posts_index[entry.link] = filepath
+                return True
+    
+            return False
+    
+        except Exception as e:
+            print(f"게시글 처리 중 오류 발생: {str(e)}")
+            return False
 
     def sync(self):
         """메인 동기화 함수"""
