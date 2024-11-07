@@ -121,7 +121,7 @@ class VelogSync:
 
             # 변경사항이 있거나 새 게시물인 경우 저장
             if changes or is_new_post:
-                print(f"{'새 게시물 추가' if is_new_post else '게시물 업데이트'}: {entry.title}")
+                print(f"{'새 게시물 추가' if is_new_post else '게시물 업데이트(제목)'}: {entry.title}")
                 print(f"변경사항: {', '.join(changes) if changes else '없음'}")
                 
                 # 파일명 변경이 필요한 경우
@@ -171,10 +171,10 @@ class VelogSync:
                     changes_made = True
 
             if changes_made:
-                print("변경사항 푸시 중...")
+                print("변경사항 반영 중...")
                 origin = self.repo.remote(name='origin')
                 origin.push()
-                print("모든 변경사항이 GitHub에 푸시되었습니다.")
+                print("모든 변경사항이 GitHub에 반영되었습니다.")
             else:
                 print("변경사항이 없습니다.")
 
