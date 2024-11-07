@@ -153,12 +153,7 @@ class VelogSync:
                     # 내용 변경 확인 (공백 무시)
                     if existing_post.content.strip() != markdown_content.strip():
                         changes.append("content")
-                        print(f"내용 변경 감지: {entry.title}")
-                    
-                    # 제목 변경 확인
-                    if existing_post.metadata.get('title', '').strip() != entry.title.strip():
-                        changes.append("title")
-                        print(f"제목 변경 감지: {existing_post.metadata.get('title', '')} -> {entry.title}")
+                        print(f"내용 변경 감지")
                     
                     # 시리즈 변경 확인
                     existing_series = existing_post.metadata.get('series_name')
@@ -185,7 +180,6 @@ class VelogSync:
     
             # 메타데이터 설정
             metadata = {
-                'title': entry.title,
                 'date': date_str,
                 'link': entry.link,
                 'tags': tags,
@@ -245,12 +239,49 @@ class VelogSync:
             if feed.bozo:
                 print(f"RSS 피드 파싱 오류: {feed.bozo_exception}")
                 return
-
+    
             changes_made = False
+            updated_series = set()  # 이미 처리한 시리즈를 추적
+    
+            # 모든 게시물 처리
             for entry in feed.entries:
-                if self.create_or_update_post(entry):
-                    changes_made = True
-
+                try:
+                    # 게시물의 시리즈 정보 가져오기
+                    response = requests.get(entry.link)
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    series_info = self.get_series_info(entry.link)
+                    
+                    # 시리즈가 있고 아직 처리하지 않은 시리즈라면
+                    if series_info.get('series_name') and series_info['series_name'] not in updated_series:
+                        # 해당 시리즈의 모든 게시물 업데이트
+                        for filepath in glob.glob(os.path.join(self.posts_dir, '*.md')):
+                            try:
+                                post = frontmatter.load(filepath)
+                                if post.metadata.get('series_name') == series_info['series_name']:
+                                    # 해당 게시물의 최신 정보 가져오기
+                                    post_response = requests.get(post.metadata['link'])
+                                    post_soup = BeautifulSoup(post_response.text, 'html.parser')
+                                    post_series_info = self.get_series_info(post.metadata['link'])
+                                    
+                                    # 시리즈 정보 업데이트
+                                    if post_series_info:
+                                        self.create_or_update_post(feedparser.FeedParserDict({
+                                            'link': post.metadata['link'],
+                                            'title': post.metadata['title'],
+                                            'published': post.metadata['date'],
+                                            'description': post_soup.find('div', class_='blog-post-content').decode_contents()
+                                        }))
+                                        
+                        updated_series.add(series_info['series_name'])
+                        changes_made = True
+                    
+                    # 일반 게시물 처리
+                    if self.create_or_update_post(entry):
+                        changes_made = True
+                        
+                except Exception as e:
+                    print(f"게시물 처리 중 오류 발생: {str(e)}")
+    
             if changes_made:
                 print("변경사항 푸시 중...")
                 origin = self.repo.remote(name='origin')
@@ -258,7 +289,7 @@ class VelogSync:
                 print("모든 변경사항이 GitHub에 푸시되었습니다.")
             else:
                 print("변경사항이 없습니다.")
-
+    
         except Exception as e:
             print(f"동기화 중 오류 발생: {str(e)}")
 
