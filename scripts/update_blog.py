@@ -241,50 +241,69 @@ class VelogSync:
                 return
     
             changes_made = False
-            updated_series = set()  # 이미 처리한 시리즈를 추적
+            series_changes = {}  # 시리즈별 변경사항 추적
     
-            # 모든 게시물 처리
+            # 첫번째 패스: 모든 게시물의 변경사항 확인 및 기본 업데이트
             for entry in feed.entries:
                 try:
                     # 게시물의 시리즈 정보 가져오기
                     response = requests.get(entry.link)
                     soup = BeautifulSoup(response.text, 'html.parser')
                     series_info = self.get_series_info(entry.link)
-                    
-                    # 시리즈가 있고 아직 처리하지 않은 시리즈라면
-                    if series_info.get('series_name') and series_info['series_name'] not in updated_series:
-                        # 해당 시리즈의 모든 게시물 업데이트
-                        for filepath in glob.glob(os.path.join(self.posts_dir, '*.md')):
-                            try:
-                                post = frontmatter.load(filepath)
-                                if post.metadata.get('series_name') == series_info['series_name']:
-                                    # 해당 게시물의 최신 정보 가져오기
-                                    post_response = requests.get(post.metadata['link'])
-                                    post_soup = BeautifulSoup(post_response.text, 'html.parser')
-                                    post_series_info = self.get_series_info(post.metadata['link'])
-                                    
-                                    # 시리즈 정보 업데이트
-                                    if post_series_info:
-                                        self.create_or_update_post(feedparser.FeedParserDict({
-                                            'link': post.metadata['link'],
-                                            'title': post.metadata['title'],
-                                            'published': post.metadata['date'],
-                                            'description': post_soup.find('div', class_='blog-post-content').decode_contents()
-                                        }))
-                            except Exception as e:
-                                print(f"시리즈 게시물 업데이트 중 오류: {str(e)}")
-                                continue
-                        
-                        updated_series.add(series_info['series_name'])
-                        changes_made = True
-                    
+    
+                    # 기존 게시물의 시리즈 정보와 비교
+                    if entry.link in self.posts_index:
+                        try:
+                            existing_post = frontmatter.load(self.posts_index[entry.link])
+                            old_series = existing_post.metadata.get('series_name')
+                            new_series = series_info.get('series_name')
+                            
+                            # 시리즈 변경 감지
+                            if old_series != new_series:
+                                # 이전 시리즈와 새 시리즈 모두 업데이트 필요
+                                if old_series:
+                                    series_changes[old_series] = True
+                                if new_series:
+                                    series_changes[new_series] = True
+                        except Exception as e:
+                            print(f"시리즈 변경 감지 중 오류: {str(e)}")
+    
                     # 일반 게시물 처리
                     if self.create_or_update_post(entry):
                         changes_made = True
+                    
+                    # 현재 게시물의 시리즈 정보 저장
+                    if series_info.get('series_name'):
+                        series_changes[series_info['series_name']] = True
                         
                 except Exception as e:
                     print(f"게시물 처리 중 오류 발생: {str(e)}")
-                    continue
+    
+            # 두번째 패스: 변경된 시리즈의 모든 게시물 업데이트
+            for series_name in series_changes:
+                print(f"시리즈 '{series_name}' 전체 업데이트 중...")
+                for filepath in glob.glob(os.path.join(self.posts_dir, '*.md')):
+                    try:
+                        post = frontmatter.load(filepath)
+                        if post.metadata.get('series_name') == series_name:
+                            post_url = post.metadata['link']
+                            response = requests.get(post_url)
+                            soup = BeautifulSoup(response.text, 'html.parser')
+                            content = soup.find('div', class_='blog-post-content')
+                            
+                            if content:
+                                # feedparser.FeedParserDict와 동일한 구조로 생성
+                                mock_entry = feedparser.FeedParserDict({
+                                    'title': post.metadata.get('title', ''),
+                                    'link': post_url,
+                                    'published': post.metadata.get('date', ''),
+                                    'description': content.decode_contents()
+                                })
+                                
+                                self.create_or_update_post(mock_entry)
+                                changes_made = True
+                    except Exception as e:
+                        print(f"시리즈 게시물 업데이트 중 오류: {str(e)}")
     
             if changes_made:
                 print("변경사항 푸시 중...")
