@@ -119,13 +119,15 @@ class VelogSync:
         """
         게시물 파일 이름 변경
         - 제목이 변경된 경우 파일 이름도 함께 변경
+        - Git에서도 파일 이름 변경을 추적
         """
         new_filename = f"{date_str}-{new_title.replace('/', '-').replace('\\', '-')}.md"
         new_filepath = os.path.join(self.posts_dir, new_filename)
         
         if old_filepath != new_filepath and os.path.exists(old_filepath):
             try:
-                os.rename(old_filepath, new_filepath)
+                # Git에서 파일 이름 변경을 추적하기 위해 git mv 명령 사용
+                self.repo.index.move([old_filepath, new_filepath])
                 print(f"파일 이름 변경됨: {os.path.basename(old_filepath)} -> {new_filename}")
                 return new_filepath
             except Exception as e:
@@ -160,21 +162,10 @@ class VelogSync:
             markdown_content = self.convert_html_to_markdown(entry.description)
             content_hash = self.get_content_hash(markdown_content)
 
-            # 메타데이터 설정
-            post_metadata = {
-                'title': entry.title,
-                'date': date_str,
-                'link': entry.link,
-                'tags': tags,
-                'last_modified': current_date
-            }
-
-            # 시리즈 정보가 있으면 메타데이터에 추가
-            if series_info:
-                post_metadata.update(series_info)
-
             update_needed = True
             is_new_post = True
+            needs_rename = False
+            last_modified = current_date  # 기본값으로 현재 날짜 설정
 
             if existing_filepath and os.path.exists(existing_filepath):
                 is_new_post = False
@@ -182,22 +173,33 @@ class VelogSync:
                     existing_post = frontmatter.load(existing_filepath)
                     existing_hash = self.get_content_hash(existing_post.content)
                     
-                    # 내용이 같고 제목만 다른 경우
+                    # 내용이 같은 경우
                     if existing_hash == content_hash:
+                        # 제목이 다른 경우에만 업데이트 필요
                         if existing_post.metadata.get('title') != entry.title:
-                            # 파일 이름만 변경
-                            new_filepath = self.rename_post_file(existing_filepath, entry.title, date_str)
-                            existing_filepath = new_filepath
+                            needs_rename = True
                             update_needed = True
                         else:
                             update_needed = False
                         
-                        # 기존 last_modified 유지
-                        if 'last_modified' in existing_post.metadata:
-                            post_metadata['last_modified'] = existing_post.metadata['last_modified']
+                        # 내용이 같으면 기존 last_modified 유지
+                        last_modified = existing_post.metadata.get('last_modified', date_str)
                     
                 except Exception as e:
                     print(f"기존 파일 읽기 실패: {str(e)}")
+
+            # 메타데이터 설정
+            post_metadata = {
+                'title': entry.title,
+                'date': date_str,
+                'link': entry.link,
+                'tags': tags,
+                'last_modified': last_modified
+            }
+
+            # 시리즈 정보가 있으면 메타데이터에 추가
+            if series_info:
+                post_metadata.update(series_info)
 
             if update_needed:
                 # 새 게시물이면 새 경로 생성
@@ -206,6 +208,9 @@ class VelogSync:
                     filepath = os.path.join(self.posts_dir, filename)
                 else:
                     filepath = existing_filepath
+                    # 제목이 변경된 경우 파일 이름 변경
+                    if needs_rename:
+                        filepath = self.rename_post_file(existing_filepath, entry.title, date_str)
 
                 # 포스트 저장
                 post_content = frontmatter.Post(markdown_content, **post_metadata)
@@ -213,9 +218,8 @@ class VelogSync:
                     f.write(frontmatter.dumps(post_content))
 
                 # Git에 변경사항 추가
-                self.repo.index.add([filepath])
-                if existing_filepath and existing_filepath != filepath:
-                    self.repo.index.remove([existing_filepath], working_tree=True)
+                if not needs_rename:  # 이미 rename_post_file에서 Git 변경사항을 추가했으므로
+                    self.repo.index.add([filepath])
 
                 action = "Add" if is_new_post else "Update"
                 commit_message = f"{action} post: {entry.title} ({current_date})"
