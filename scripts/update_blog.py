@@ -188,6 +188,23 @@ class VelogSync:
                         needs_rename = True
                         print(f"제목 변경 감지: {old_title} -> {entry.title}")
                     
+                    # 시리즈 정보 변경 확인
+                    existing_series = existing_post.metadata.get('series_name')
+                    existing_order = existing_post.metadata.get('series_order')
+                    
+                    if series_info:
+                        new_series = series_info.get('series_name')
+                        new_order = series_info.get('series_order')
+                        
+                        if (new_series != existing_series) or (new_order != existing_order):
+                            print(f"시리즈 정보 변경 감지:")
+                            print(f"이전: {existing_series} ({existing_order})")
+                            print(f"새로운: {new_series} ({new_order})")
+                            last_modified = current_date  # 시리즈 정보가 변경되면 last_modified 업데이트
+                    elif existing_series:
+                        print(f"시리즈 제거 감지: {existing_series}")
+                        last_modified = current_date
+
                 except Exception as e:
                     print(f"기존 파일 읽기 실패: {str(e)}")
                     is_new_post = True
