@@ -267,15 +267,22 @@ class VelogSync:
             # HTML을 마크다운으로 변환
             markdown_content = self.convert_html_to_markdown(entry.description)
     
+            # 초기값 설정
             is_new_post = True
             old_title = None
             changes = []  # 변경 사항 추적
+            content_changed = False
+            title_changed = False
+            series_changed = False
+            needs_update = False
+            last_modified = current_date
     
             if existing_filepath and os.path.exists(existing_filepath):
                 is_new_post = False
                 try:
                     existing_post = frontmatter.load(existing_filepath)
                     old_title = existing_post.metadata.get('title')
+                    
                     # 변경 사항 확인
                     content_changed, title_changed, series_changed, needs_update = self.check_changes(
                         existing_post, markdown_content, entry.title, series_info
