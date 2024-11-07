@@ -2,9 +2,10 @@
 date: '2024-11-06'
 last_modified: '2024-11-07'
 link: https://velog.io/@jlee38266/%EB%A1%9C%EC%BB%AC-Kubernetes-%ED%99%98%EA%B2%BD-%EB%B9%84%EA%B5%90
-series_name: Series Test
-series_order: 1/1
+series_name: GitHub Actions
+series_order: 2/2
 tags:
+- Tests
 - kubernetes
 title: 로컬 Kubernetes 환경 비교 제목 추가
 ---
