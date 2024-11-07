@@ -271,7 +271,10 @@ class VelogSync:
                                             'published': post.metadata['date'],
                                             'description': post_soup.find('div', class_='blog-post-content').decode_contents()
                                         }))
-                                        
+                            except Exception as e:
+                                print(f"시리즈 게시물 업데이트 중 오류: {str(e)}")
+                                continue
+                        
                         updated_series.add(series_info['series_name'])
                         changes_made = True
                     
@@ -281,6 +284,7 @@ class VelogSync:
                         
                 except Exception as e:
                     print(f"게시물 처리 중 오류 발생: {str(e)}")
+                    continue
     
             if changes_made:
                 print("변경사항 푸시 중...")
