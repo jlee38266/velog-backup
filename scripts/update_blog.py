@@ -72,8 +72,7 @@ class VelogSync:
                     
                     return {
                         "series_name": series_name,
-                        "series_order": f"{current_number}/{total_posts}",
-                        "total_in_series": total_posts
+                        "series_order": f"{current_number}/{total_posts}"
                     }
         except Exception as e:
             print(f"시리즈 정보 가져오기 실패: {str(e)}")
