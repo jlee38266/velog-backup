@@ -4,7 +4,7 @@ last_modified: '2024-11-07'
 link: https://velog.io/@jlee38266/%EB%A1%9C%EC%BB%AC-Kubernetes-%ED%99%98%EA%B2%BD-%EB%B9%84%EA%B5%90
 tags:
 - kubernetes
-title: 로컬 Kubernetes 환경 비교 (test)
+title: 로컬 Kubernetes 환경 비교 (test2)
 ---
 
 로컬 Kubernetes 환경을 선택할 때 고려할 주요 요소들을 정리했습니다. Docker Desktop Kubernetes, Minikube, k3d의 주요 차이점은 다음과 같습니다.
