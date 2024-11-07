@@ -10,7 +10,7 @@ import html2text
 import glob
 from bs4 import BeautifulSoup
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set, Tuple
 
 class VelogSync:
     def __init__(self):
@@ -26,6 +26,7 @@ class VelogSync:
         self.git_username = os.getenv('GIT_USERNAME')
         self.git_email = os.getenv('GIT_EMAIL')
         self.series_posts = {}  # 시리즈별 게시물 추적을 위한 딕셔너리
+        self.current_feed_urls = set()  # 현재 RSS 피드에 있는 URL들을 저장
 
         if not self.username:
             raise ValueError("VELOG_USERNAME 환경 변수가 설정되지 않았습니다.")
@@ -49,6 +50,11 @@ class VelogSync:
         # URL을 키로 하는 파일 경로 인덱스
         self.posts_index = {}
         self.load_existing_posts()
+
+    def ensure_directory_exists(self, directory: str):
+        """지정된 디렉토리가 없으면 생성"""
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
     def load_existing_posts(self):
         """기존 게시물들의 URL과 파일 경로를 인덱싱"""
@@ -74,15 +80,8 @@ class VelogSync:
             except Exception as e:
                 print(f"시리즈 정보 수집 중 오류: {str(e)}")
 
-    def ensure_directory_exists(self, directory: str):
-        """지정된 디렉토리가 없으면 생성"""
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
     def get_series_info(self, post_url: str) -> Dict[str, any]:
-        """
-        Velog 게시글의 시리즈 정보를 가져오는 함수
-        """
+        """Velog 게시글의 시리즈 정보를 가져오는 함수"""
         try:
             response = requests.get(post_url)
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -148,9 +147,7 @@ class VelogSync:
         return {}
 
     def get_tags(self, soup: BeautifulSoup) -> List[str]:
-        """
-        게시글의 태그 정보를 가져오는 함수
-        """
+        """게시글의 태그 정보를 가져오는 함수"""
         tags = []
         try:
             tag_list = soup.find('div', class_='sc-cZMNgc')
@@ -172,10 +169,47 @@ class VelogSync:
         """HTML 컨텐츠를 마크다운으로 변환"""
         return self.h2t.handle(html_content)
 
+    def check_changes(self, 
+                     existing_post: frontmatter.Post, 
+                     new_content: str,
+                     new_title: str,
+                     new_series_info: Dict) -> Tuple[bool, bool, bool, bool]:
+        """
+        게시물의 변경 사항을 확인하고 반환
+        
+        Returns:
+            Tuple[bool, bool, bool, bool]: (content_changed, title_changed, series_changed, needs_update)
+        """
+        content_changed = self.get_content_hash(existing_post.content) != self.get_content_hash(new_content)
+        title_changed = existing_post.metadata.get('title', '') != new_title
+        
+        # 시리즈 변경 확인
+        old_series = existing_post.metadata.get('series_name')
+        old_order = existing_post.metadata.get('series_order')
+        new_series = new_series_info.get('series_name') if new_series_info else None
+        new_order = new_series_info.get('series_order') if new_series_info else None
+        
+        series_changed = (old_series != new_series) or (old_order != new_order)
+        
+        # 전체적인 업데이트 필요 여부
+        needs_update = content_changed or title_changed or series_changed
+        
+        return content_changed, title_changed, series_changed, needs_update
+
+    def update_last_modified(self, 
+                           metadata: Dict, 
+                           content_changed: bool, 
+                           title_changed: bool, 
+                           series_changed: bool,
+                           current_date: str,
+                           original_date: str) -> str:
+        """last_modified 값을 적절히 업데이트"""
+        if content_changed or title_changed or series_changed:
+            return current_date
+        return metadata.get('last_modified', original_date)
+
     def update_series_order(self, series_name: str) -> None:
-        """
-        특정 시리즈의 모든 게시물의 순서를 업데이트
-        """
+        """특정 시리즈의 모든 게시물의 순서를 업데이트"""
         if not series_name or series_name not in self.series_posts:
             return
     
@@ -196,9 +230,20 @@ class VelogSync:
                 except Exception as e:
                     print(f"시리즈 순서 업데이트 실패: {str(e)}")
 
+    def sanitize_filename(self, filename: str) -> str:
+        """파일 이름에 사용할 수 없는 문자들을 처리"""
+        # Windows와 Unix 모두에서 사용할 수 없는 문자들을 대체
+        invalid_chars = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']
+        for char in invalid_chars:
+            filename = filename.replace(char, '-')
+        return filename
+
     def create_or_update_post(self, entry: feedparser.FeedParserDict) -> bool:
         """게시글 생성 또는 업데이트"""
         try:
+            # 현재 피드에 있는 URL 추적
+            self.current_feed_urls.add(entry.link)
+            
             # 게시글 URL로 기존 파일 찾기
             existing_filepath = self.posts_index.get(entry.link)
             
@@ -221,52 +266,51 @@ class VelogSync:
     
             # HTML을 마크다운으로 변환
             markdown_content = self.convert_html_to_markdown(entry.description)
-            content_hash = self.get_content_hash(markdown_content)
     
             is_new_post = True
-            needs_rename = False
-            needs_update = False
-            last_modified = current_date
             old_title = None
+            changes = []  # 변경 사항 추적
     
             if existing_filepath and os.path.exists(existing_filepath):
                 is_new_post = False
                 try:
                     existing_post = frontmatter.load(existing_filepath)
-                    existing_hash = self.get_content_hash(existing_post.content)
                     old_title = existing_post.metadata.get('title')
+                    # 변경 사항 확인
+                    content_changed, title_changed, series_changed, needs_update = self.check_changes(
+                        existing_post, markdown_content, entry.title, series_info
+                    )
                     
-                    # 시리즈 정보 변경 확인을 먼저 수행
-                    existing_series = existing_post.metadata.get('series_name')
-                    existing_order = existing_post.metadata.get('series_order')
-                    new_series = series_info.get('series_name') if series_info else None
-                    new_order = series_info.get('series_order') if series_info else None
+                    # last_modified 업데이트
+                    last_modified = self.update_last_modified(
+                        existing_post.metadata,
+                        content_changed, 
+                        title_changed,
+                        series_changed,
+                        current_date,
+                        date_str
+                    )
                     
-                    # 내용이 같더라도 시리즈 정보가 다르면 업데이트 필요
-                    if (new_series != existing_series) or (new_order != existing_order):
-                        print(f"시리즈 정보 변경 감지:")
-                        print(f"이전: {existing_series} ({existing_order if existing_order else 'N/A'})")
-                        print(f"새로운: {new_series} ({new_order if new_order else 'N/A'})")
-                        needs_update = True
-                        last_modified = current_date
-                    elif existing_hash == content_hash:
-                        last_modified = existing_post.metadata.get('last_modified', date_str)
-                    else:
-                        needs_update = True
-                        last_modified = current_date
-                    
-                    # 제목이 다른 경우 파일 이름 변경 필요
-                    if old_title != entry.title:
-                        needs_rename = True
-                        needs_update = True
-                        print(f"제목 변경 감지: {old_title} -> {entry.title}")
+                    # 변경 사항 추적
+                    if content_changed:
+                        changes.append("content")
+                    if title_changed:
+                        changes.append("title")
+                    if series_changed:
+                        changes.append("series")
                     
                 except Exception as e:
                     print(f"기존 파일 읽기 실패: {str(e)}")
                     is_new_post = True
+                    needs_update = True
+                    last_modified = current_date
+            else:
+                needs_update = True
+                last_modified = current_date
     
             # 메타데이터 설정
             post_metadata = {
+                'title': entry.title,
                 'date': date_str,
                 'link': entry.link,
                 'tags': tags,
@@ -282,6 +326,18 @@ class VelogSync:
                 if series_name not in self.series_posts:
                     self.series_posts[series_name] = set()
                 self.series_posts[series_name].add(entry.link)
+            
+                # 기존 시리즈에서 제거
+                if not is_new_post:
+                    try:
+                        existing_post = frontmatter.load(existing_filepath)
+                        old_series = existing_post.metadata.get('series_name')
+                        if old_series and old_series != series_name:
+                            if old_series in self.series_posts:
+                                self.series_posts[old_series].discard(entry.link)
+                                self.update_series_order(old_series)
+                    except Exception as e:
+                        print(f"기존 시리즈 정보 제거 중 오류: {str(e)}")
             else:
                 # 기존 게시물이 시리즈에서 제거된 경우
                 if not is_new_post:
@@ -296,11 +352,11 @@ class VelogSync:
     
             # 파일 경로 및 이름 처리
             if is_new_post:
-                filename = f"{date_str}-{entry.title.replace('/', '-').replace('\\', '-')}.md"
+                filename = f"{date_str}-{self.sanitize_filename(entry.title)}.md"
                 filepath = os.path.join(self.posts_dir, filename)
             else:
-                if needs_rename:
-                    new_filename = f"{date_str}-{entry.title.replace('/', '-').replace('\\', '-')}.md"
+                if title_changed:
+                    new_filename = f"{date_str}-{self.sanitize_filename(entry.title)}.md"
                     new_filepath = os.path.join(self.posts_dir, new_filename)
                     
                     try:
@@ -319,13 +375,13 @@ class VelogSync:
                 else:
                     filepath = existing_filepath
     
-            if needs_update or is_new_post:
+            if needs_update:
                 # 포스트 저장
                 post_content = frontmatter.Post(markdown_content, **post_metadata)
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(frontmatter.dumps(post_content))
     
-                if not needs_rename:
+                if not title_changed:  # 제목 변경 시에는 이미 add 되었음
                     self.repo.index.add([filepath])
     
                 # 시리즈 정보가 있는 경우 다른 게시물들도 업데이트
@@ -333,13 +389,11 @@ class VelogSync:
                     self.update_series_order(series_info['series_name'])
     
                 # Git 커밋 메시지 설정
-                if needs_rename:
-                    commit_message = f"Rename post: {old_title} -> {entry.title} ({current_date})"
-                elif is_new_post:
+                if is_new_post:
                     commit_message = f"Add post: {entry.title} ({current_date})"
                 else:
-                    change_type = "Update series info for" if series_info else "Update"
-                    commit_message = f"{change_type} post: {entry.title} ({current_date})"
+                    change_types = ' & '.join(changes) if changes else "general"
+                    commit_message = f"Update {change_types} in: {entry.title} ({current_date})"
                 
                 # Git 커밋
                 self.repo.index.commit(
@@ -347,11 +401,6 @@ class VelogSync:
                     author=git.Actor(self.git_username, self.git_email),
                     committer=git.Actor(self.git_username, self.git_email)
                 )
-    
-                # 변경된 내용 확인을 위한 디버그 출력
-                print(f"\n변경된 파일 내용 확인: {filepath}")
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    print(f.read())
     
                 # 인덱스 업데이트
                 self.posts_index[entry.link] = filepath
@@ -372,6 +421,9 @@ class VelogSync:
                 print(f"RSS 피드 파싱 오류: {feed.bozo_exception}")
                 return
 
+            # 현재 피드의 URL 집합 초기화
+            self.current_feed_urls.clear()
+            
             # 먼저 모든 시리즈 정보 수집
             self.collect_series_info()
             
@@ -380,6 +432,9 @@ class VelogSync:
             for entry in feed.entries:
                 if self.create_or_update_post(entry):
                     changes_made = True
+
+            # 이제 피드에는 없지만 로컬에 있는 파일들은 그대로 유지
+            # (삭제된 게시물의 백업 유지)
 
             # 모든 게시물 처리 후 시리즈 순서 최종 업데이트
             for series_name in self.series_posts:
