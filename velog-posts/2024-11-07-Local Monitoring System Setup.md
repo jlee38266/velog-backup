@@ -1,8 +1,10 @@
 ---
 date: '2024-11-07'
-last_modified: '2024-11-18'
+last_modified: '2024-11-19'
 link: https://velog.io/@jlee38266/Local-Monitoring-System-Setup
-tags: []
+tags:
+- devops
+- monitoring
 ---
 
 WSL2 환경에서 k3d와 Tilt를 활용하여 구현된 애플리케이션의 모니터링 시스템을 구축하는 과정을 기록합니다.
