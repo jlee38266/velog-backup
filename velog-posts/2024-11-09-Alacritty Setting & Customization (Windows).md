@@ -1,8 +1,9 @@
 ---
 date: '2024-11-09'
-last_modified: '2024-11-20'
+last_modified: '2024-11-21'
 link: https://velog.io/@jlee38266/Alacritty-Setting-Customization-Windows
-tags: []
+tags:
+- alacritty
 ---
 
 ![](https://velog.velcdn.com/images/jlee38266/post/53bc283e-25e2-47e5-a9cd-d69eeecfb50f/image.png)
