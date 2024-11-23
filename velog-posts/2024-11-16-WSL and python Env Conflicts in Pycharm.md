@@ -2,11 +2,9 @@
 _id: 641c6bd2-6074-49b2-b57e-bbf24e5fc556
 date: '2024-11-16'
 last_modified: '2024-11-23'
-title: WSL and python Env Conflicts in Pycharm (제목 변경)
-url: https://velog.io/@jlee38266/WSL-and-python-Env-Conflicts-in-Pycharm-제목-변경
+title: WSL and python Env Conflicts in Pycharm
+url: https://velog.io/@jlee38266/WSL-and-python-Env-Conflicts-in-Pycharm
 ---
-
-# 테스트용 내용 추가
 
 ![](https://velog.velcdn.com/images/jlee38266/post/9053f329-8c2a-4347-969e-d34bceb883d2/image.png)
 
