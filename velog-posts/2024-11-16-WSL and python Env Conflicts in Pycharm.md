@@ -1,9 +1,8 @@
 ---
 date: '2024-11-16'
-last_modified: '2024-11-16'
+last_modified: '2024-11-23'
 link: https://velog.io/@jlee38266/WSL-and-python-Env-Conflicts-in-Pycharm
-tags:
-- python
+tags: []
 ---
 
 ![](https://velog.velcdn.com/images/jlee38266/post/9053f329-8c2a-4347-969e-d34bceb883d2/image.png)
