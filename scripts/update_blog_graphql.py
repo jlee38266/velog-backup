@@ -58,17 +58,25 @@ class VelogSync:
         """GraphQL을 사용하여 모든 게시물 정보 가져오기"""
         # 1. 먼저 모든 게시물의 기본 정보를 가져옵니다
         posts_query = """
-        query Posts { 
-            posts { 
+        query Posts($username: String!) { 
+            posts(username: $username) { 
                 title 
                 url_slug 
             } 
         }
         """
 
+        # username 변수 추가
+        variables = {
+            "username": self.username
+        }
+
         response = requests.post(
             self.graphql_url,
-            json={'query': posts_query}
+            json={
+                'query': posts_query,
+                'variables': variables  # 변수 전달
+            }
         )
 
         if response.status_code != 200:
