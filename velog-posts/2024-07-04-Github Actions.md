@@ -1,9 +1,8 @@
 ---
 date: '2024-07-04'
-last_modified: '2024-11-21'
+last_modified: '2024-11-23'
 link: https://velog.io/@jlee38266/Github-Actions
-tags:
-- github actions
+tags: []
 ---
 
 ## Github Actions 프로젝트에 추가하기
