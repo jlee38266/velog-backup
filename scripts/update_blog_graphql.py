@@ -100,11 +100,11 @@ class VelogSync:
                 post(username: $username, url_slug: $url_slug) {
                     id 
                     title 
-                    body 
-                    url_slug 
                     released_at 
                     updated_at 
+                    body 
                     is_private 
+                    url_slug 
                 } 
             }
             """
