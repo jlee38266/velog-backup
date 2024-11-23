@@ -1,54 +1,54 @@
-# .github/workflows/velog-sync.yml
-
-name: Velog Posts Sync
-
-on:
-  schedule:
-    - cron: '50 14 * * *'   # UTC 14:50 = KST 23:50
-  workflow_dispatch:        # 수동 실행 가능
-
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout repository  # 저장소 체크아웃
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0      # 전체 커밋 히스토리 가져오기
-
-    - name: Set up Python  # Python 환경 설정
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
-    
-    - name: Cache pip packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/*.py') }}
-        restore-keys: |
-          ${{ runner.os }}-pip
-
-    - name: Install dependencies  # 필요한 패키지 설치
-      run: |
-        python -m pip install --upgrade pip
-        pip install feedparser python-frontmatter beautifulsoup4 requests gitpython html2text
-    
-    - name: Run sync script
-      env:
-        VELOG_USERNAME: ${{ secrets.VELOG_USERNAME }}
-        GH_PAT: ${{ secrets.GH_PAT }}
-        GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
-        GIT_EMAIL: ${{ secrets.GIT_EMAIL }}
-      run: python scripts/update_blog.py
-
-    - name: Push changes
-      env:
-        GH_PAT: ${{ secrets.GH_PAT }}
-        GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
-        GIT_EMAIL: ${{ secrets.GIT_EMAIL }}
-      run: |
-        git config --global user.name "${{ secrets.GIT_USERNAME }}"
-        git config --global user.email "${{ secrets.GIT_EMAIL }}"
-        git push https://$GH_PAT@github.com/${{ github.repository }}.git
+## .github/workflows/velog-sync.yml
+#
+#name: Velog Posts Sync
+#
+#on:
+#  schedule:
+#    - cron: '50 14 * * *'   # UTC 14:50 = KST 23:50
+#  workflow_dispatch:        # 수동 실행 가능
+#
+#jobs:
+#  sync:
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#    - name: Checkout repository  # 저장소 체크아웃
+#      uses: actions/checkout@v4
+#      with:
+#        fetch-depth: 0      # 전체 커밋 히스토리 가져오기
+#
+#    - name: Set up Python  # Python 환경 설정
+#      uses: actions/setup-python@v5
+#      with:
+#        python-version: '3.x'
+#
+#    - name: Cache pip packages
+#      uses: actions/cache@v4
+#      with:
+#        path: ~/.cache/pip
+#        key: ${{ runner.os }}-pip-${{ hashFiles('**/*.py') }}
+#        restore-keys: |
+#          ${{ runner.os }}-pip
+#
+#    - name: Install dependencies  # 필요한 패키지 설치
+#      run: |
+#        python -m pip install --upgrade pip
+#        pip install feedparser python-frontmatter beautifulsoup4 requests gitpython html2text
+#
+#    - name: Run sync script
+#      env:
+#        VELOG_USERNAME: ${{ secrets.VELOG_USERNAME }}
+#        GH_PAT: ${{ secrets.GH_PAT }}
+#        GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
+#        GIT_EMAIL: ${{ secrets.GIT_EMAIL }}
+#      run: python scripts/update_blog.py
+#
+#    - name: Push changes
+#      env:
+#        GH_PAT: ${{ secrets.GH_PAT }}
+#        GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
+#        GIT_EMAIL: ${{ secrets.GIT_EMAIL }}
+#      run: |
+#        git config --global user.name "${{ secrets.GIT_USERNAME }}"
+#        git config --global user.email "${{ secrets.GIT_EMAIL }}"
+#        git push https://$GH_PAT@github.com/${{ github.repository }}.git
