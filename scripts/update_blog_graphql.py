@@ -1,5 +1,6 @@
 # scripts/update_blog_graphql.py
 
+import glob
 import frontmatter  # markdown 파일의 메타데이터를 처리하기 위한 라이브러리
 import git  # Git 작업을 위한 라이브러리
 import os  # 파일/디렉토리 작업을 위한 라이브러리
