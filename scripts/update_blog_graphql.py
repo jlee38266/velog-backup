@@ -39,9 +39,14 @@ class VelogSync:
 
     def load_existing_posts(self):
         """기존에 저장된 게시물들의 정보를 불러옵니다"""
+        self.posts_index = {}  # URL -> filepath
+        self.id_index = {}  # post_id -> filepath
+
         for filepath in glob.glob(os.path.join(self.posts_dir, '*.md')):
             try:
                 post = frontmatter.load(filepath)
+                if 'post_id' in post.metadata:
+                    self.id_index[post.metadata['post_id']] = filepath
                 if 'url' in post.metadata:
                     self.posts_index[post.metadata['url']] = filepath
             except Exception as e:
@@ -95,7 +100,8 @@ class VelogSync:
         for post in posts_list:
             post_query = """
             query Post($username: String!, $url_slug: String!) { 
-                post(username: $username, url_slug: $url_slug) { 
+                post(username: $username, url_slug: $url_slug) {
+                    id 
                     title 
                     body 
                     url_slug 
@@ -139,7 +145,8 @@ class VelogSync:
         try:
             # Velog URL 생성
             post_url = f"https://velog.io/@{self.username}/{post['url_slug']}"
-            existing_filepath = self.posts_index.get(post_url)
+            # post_id로 기존 파일 찾기
+            existing_filepath = self.id_index.get(post['id']) or self.posts_index.get(post_url)
 
             # 날짜 정보 변환
             date_str = datetime.fromisoformat(post['released_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d')
@@ -152,13 +159,14 @@ class VelogSync:
 
             if not is_new_post:
                 existing_post = frontmatter.load(existing_filepath)
-                # 각종 변경사항 체크
+                # 변경사항 체크
                 if existing_post.content.strip() != post['body'].strip():
                     changes.append("content")
                 if existing_post.metadata.get('title') != post['title']:
                     changes.append("title")
                 if existing_post.metadata.get('url') != post_url:
                     changes.append("url")
+                    # URL이 변경된 경우 이전 URL 인덱스 제거
                     old_url = existing_post.metadata.get('url')
                     if old_url in self.posts_index:
                         del self.posts_index[old_url]
@@ -174,7 +182,8 @@ class VelogSync:
                 'title': post['title'],
                 'date': date_str,
                 'url': post_url,
-                'last_modified': last_modified
+                'last_modified': last_modified,
+                'post_id': post['id']
             }
 
             # 변경사항이 있거나 새 게시물인 경우 저장
