@@ -182,8 +182,7 @@ class VelogSync:
                 'title': post['title'],
                 'date': date_str,
                 'url': post_url,
-                'last_modified': last_modified,
-                'post_id': post['id']
+                'last_modified': last_modified
             }
 
             # 변경사항이 있거나 새 게시물인 경우 저장
