@@ -39,16 +39,13 @@ class VelogSync:
 
     def load_existing_posts(self):
         """기존에 저장된 게시물들의 정보를 불러옵니다"""
-        self.posts_index = {}  # URL -> filepath
         self.id_index = {}  # post_id -> filepath
 
         for filepath in glob.glob(os.path.join(self.posts_dir, '*.md')):
             try:
                 post = frontmatter.load(filepath)
-                if 'post_id' in post.metadata:
-                    self.id_index[post.metadata['post_id']] = filepath
-                if 'url' in post.metadata:
-                    self.posts_index[post.metadata['url']] = filepath
+                if '_id' in post.metadata:  # 내부적으로만 사용할 _id 저장
+                    self.id_index[post.metadata['_id']] = filepath
             except Exception as e:
                 print(f"파일 로딩 중 오류 발생: {filepath}, {str(e)}")
 
@@ -143,10 +140,11 @@ class VelogSync:
     def create_or_update_post(self, post: Dict) -> bool:
         """게시글을 생성하거나 업데이트합니다"""
         try:
+            # post_id로 기존 파일 찾기
+            existing_filepath = self.id_index.get(post['id'])
+
             # Velog URL 생성
             post_url = f"https://velog.io/@{self.username}/{post['url_slug']}"
-            # post_id로 기존 파일 찾기
-            existing_filepath = self.id_index.get(post['id']) or self.posts_index.get(post_url)
 
             # 날짜 정보 변환
             date_str = datetime.fromisoformat(post['released_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d')
@@ -159,17 +157,12 @@ class VelogSync:
 
             if not is_new_post:
                 existing_post = frontmatter.load(existing_filepath)
-                # 변경사항 체크
                 if existing_post.content.strip() != post['body'].strip():
                     changes.append("content")
                 if existing_post.metadata.get('title') != post['title']:
                     changes.append("title")
                 if existing_post.metadata.get('url') != post_url:
                     changes.append("url")
-                    # URL이 변경된 경우 이전 URL 인덱스 제거
-                    old_url = existing_post.metadata.get('url')
-                    if old_url in self.posts_index:
-                        del self.posts_index[old_url]
                 if existing_post.metadata.get('last_modified') != last_modified:
                     changes.append("last_modified")
 
@@ -177,12 +170,13 @@ class VelogSync:
             filename = f"{date_str}-{self.sanitize_filename(post['title'])}.md"
             filepath = os.path.join(self.posts_dir, filename)
 
-            # 메타데이터 설정
+            # 메타데이터 설정 (_id는 내부용으로만 저장)
             metadata = {
                 'title': post['title'],
                 'date': date_str,
                 'url': post_url,
-                'last_modified': last_modified
+                'last_modified': last_modified,
+                '_id': post['id']  # 내부적으로만 사용할 id
             }
 
             # 변경사항이 있거나 새 게시물인 경우 저장
