@@ -1,7 +1,7 @@
 ---
 _id: b562201e-14f4-4947-b017-6e4537a170c0
 date: '2024-11-07'
-last_modified: '2024-11-23'
+last_modified: '2024-11-25'
 title: Local Monitoring System Setup
 url: https://velog.io/@jlee38266/Local-Monitoring-System-Setup
 ---
