@@ -1,7 +1,7 @@
 ---
 _id: 8d905566-8bac-4cff-9d69-45dc4c91bb3d
 date: '2024-11-09'
-last_modified: '2024-11-16'
+last_modified: '2024-11-25'
 title: Alacritty Setting & Customization (Windows)
 url: https://velog.io/@jlee38266/Alacritty-Setting-Customization-Windows
 ---
@@ -112,7 +112,7 @@ tmux:
 - 원격 작업시 안정성
 
 ## 3. alacritty configuration setup
-```
+```bash
 # 1. %APPDATA% 경로로 이동 (보통 C:\Users\[사용자명]\AppData\Roaming)
 # Windows: %APPDATA%\alacritty\alacritty.toml
 cd $env:APPDATA
@@ -159,7 +159,7 @@ alacritty.toml (또는 yaml)에 필요한 설정을 작성 후 필요에 따라 
 > ⚠️주의사항
 "%APPDATA%/alacritty/themes/themes/tokyo_night.toml" 과 같은 evn var은 의도적으로 지원하지 않으며, relative path로 테마를 연결할 수 있습니다. v0.14.0부터 지원되니 Alacritty 버전 확인 필수.
 
-```
+```bash
 # Alacritty 버전 확인 (powershell 또는 cmd에서 실행해 주세요)
 alacritty --version
 
