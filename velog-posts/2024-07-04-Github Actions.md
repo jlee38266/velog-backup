@@ -1,7 +1,7 @@
 ---
 _id: 262a3a36-77b4-448b-ad15-65d5f7a88e8e
 date: '2024-07-04'
-last_modified: '2024-11-07'
+last_modified: '2024-11-25'
 title: Github Actions
 url: https://velog.io/@jlee38266/Github-Actions
 ---
