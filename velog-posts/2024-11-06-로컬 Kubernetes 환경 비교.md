@@ -1,7 +1,7 @@
 ---
 _id: 34cdf4ff-b39f-4694-a254-c7ba6d7ef64c
 date: '2024-11-06'
-last_modified: '2024-11-08'
+last_modified: '2024-11-25'
 title: 로컬 Kubernetes 환경 비교
 url: https://velog.io/@jlee38266/로컬-Kubernetes-환경-비교
 ---
