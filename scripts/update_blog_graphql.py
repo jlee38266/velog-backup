@@ -1,6 +1,6 @@
 # scripts/update_blog_graphql.py
 
-import glob
+import glob  # 특정 패턴에 맞는 파일 이름 찾는 모듈 라이브러리
 import frontmatter  # markdown 파일의 메타데이터를 처리하기 위한 라이브러리
 import git  # Git 작업을 위한 라이브러리
 import os  # 파일/디렉토리 작업을 위한 라이브러리
@@ -170,13 +170,13 @@ class VelogSync:
             filename = f"{date_str}-{self.sanitize_filename(post['title'])}.md"
             filepath = os.path.join(self.posts_dir, filename)
 
-            # 메타데이터 설정 (_id는 내부용으로만 저장)
+            # 메타데이터 설정
             metadata = {
                 'title': post['title'],
                 'date': date_str,
                 'url': post_url,
                 'last_modified': last_modified,
-                '_id': post['id']  # 내부적으로만 사용할 id
+                '_id': post['id']
             }
 
             # 변경사항이 있거나 새 게시물인 경우 저장
