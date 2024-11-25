@@ -1,7 +1,7 @@
 ---
 _id: 641c6bd2-6074-49b2-b57e-bbf24e5fc556
 date: '2024-11-16'
-last_modified: '2024-11-23'
+last_modified: '2024-11-25'
 title: WSL and python Env Conflicts in Pycharm
 url: https://velog.io/@jlee38266/WSL-and-python-Env-Conflicts-in-Pycharm
 ---
