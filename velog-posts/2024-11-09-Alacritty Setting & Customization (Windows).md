@@ -1,7 +1,7 @@
 ---
 _id: 8d905566-8bac-4cff-9d69-45dc4c91bb3d
 date: '2024-11-09'
-last_modified: '2024-11-25'
+last_modified: '2024-12-05'
 title: Alacritty Setting & Customization (Windows)
 url: https://velog.io/@jlee38266/Alacritty-Setting-Customization-Windows
 ---
