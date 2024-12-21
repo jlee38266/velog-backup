@@ -1,7 +1,7 @@
 ---
 _id: 66c1b094-9260-48e3-ba22-e1261a70cffd
 date: '2024-11-25'
-last_modified: '2024-12-17'
+last_modified: '2024-12-21'
 title: webtoon-search 도메인 모델 개선기
 url: https://velog.io/@jlee38266/webtoon-search-도메인-모델-개선기
 ---
