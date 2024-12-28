@@ -155,11 +155,18 @@ class VelogSync:
                     print(f"게시물 상세 정보 가져오기 실패: {post['title']}")
             if len(current_posts) > 0:
                 cursor = current_posts[-1]['id']
-                print(f"Next cursor will be: {cursor} (released_at: {current_posts[-1]['released_at']})")
+                released_at = current_posts[-1].get('released_at', 'unknown')  # get을 사용하여 안전하게 접근
+                print(f"Next cursor will be: {cursor} (released_at: {released_at})")
             else:
                 break
-        print(f"\nTotal posts fetched: {len(all_posts)}")
-        return all_posts
+
+                # 페이지네이션이 더 필요한지 확인
+            if len(current_posts) < 20:  # 요청한 limit보다 적은 수의 게시물이 반환되면
+                print("Got less posts than requested limit, assuming no more posts")
+                break
+
+            print(f"\nTotal posts fetched: {len(all_posts)}")
+            return all_posts
 
     def create_or_update_post(self, post: Dict) -> bool:
         """게시글을 생성하거나 업데이트합니다"""
