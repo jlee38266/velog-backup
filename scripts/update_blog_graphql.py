@@ -64,160 +64,89 @@ class VelogSync:
         """GraphQL을 사용하여 모든 게시물 정보 가져오기"""
         # 먼저 모든 게시물의 목록을 가져오는 쿼리
         posts_query = """
-        query velogPosts($input: GetPostsInput!) {
-            posts(input: $input) {
+        query Posts($username: String!, $cursor: ID) { 
+            posts(username: $username, cursor: $cursor) { 
                 id
-                title
-                released_at
-                updated_at
-                is_private
-                url_slug
-            }
+                title 
+                url_slug 
+            } 
         }
         """
 
         all_posts = []
         cursor = None
 
-        # 페이지네이션을 통해 모든 게시물 목록을 가져옵니다
+        # cursor를 사용해 전체 게시물을 가져옴
         while True:
-            try:
-                print("\n=== 새로운 페이지 요청 시작 ===")
-                if cursor:
-                    print(f"Current cursor: {cursor}")
+            variables = {
+                "username": self.username,
+                "cursor": cursor
+            }
 
-                response = requests.post(
-                    self.graphql_url,
-                    json={
-                        'query': posts_query,
-                        'variables': {
-                            "input": {
-                                "username": self.username,
-                                "cursor": cursor,
-                                "limit": 10,
-                                "tag": ""
-                            }
-                        }
-                    },
-                    headers={
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
-                )
+            response = requests.post(
+                self.graphql_url,
+                json={
+                    'query': posts_query,
+                    'variables': variables
+                }
+            )
 
-                # 응답 디버깅을 위한 코드 추가
-                print(f"\nResponse status: {response.status_code}")
-                print(f"Response headers: {dict(response.headers)}")
+            if response.status_code != 200:
+                print(f"게시물 목록 가져오기 실패: {response.status_code}")
+                return []
 
-                # response.text를 변수에 저장하고 검사
-                response_text = response.text
-                print(f"Response text length: {len(response_text)}")
-                print(f"Response text preview: {response_text[:200]}...")
+            posts_data = response.json()
+            if 'data' not in posts_data or 'posts' not in posts_data['data']:
+                print("게시물 목록 형식이 올바르지 않습니다.")
+                return []
 
-                # JSON 파싱을 별도의 try-except로 분리
-                try:
-                    posts_data = json.loads(response_text)
-                    print("JSON parsing successful")
-                except json.JSONDecodeError as e:
-                    print(f"JSON parsing error at position {e.pos}: {str(e)}")
-                    print(f"Character at error position: {response_text[e.pos:e.pos + 10]}")
-                    break
-
-                if 'data' not in posts_data or 'posts' not in posts_data['data']:
-                    print("게시물 목록 형식이 올바르지 않습니다.")
-                    print(f"Response data structure: {posts_data.keys()}")
-                    break
-
-                current_posts = posts_data['data']['posts']
-                if not current_posts:
-                    print("더 이상 게시물이 없습니다.")
-                    break
-
-                print(f"Retrieved {len(current_posts)} posts in this page")
-
-                if response.status_code != 200:
-                    print(f"게시물 목록 가져오기 실패: {response.status_code}")
-                    break
-
-                posts_data = response.json()
-                if 'data' not in posts_data or 'posts' not in posts_data['data']:
-                    print("게시물 목록 형식이 올바르지 않습니다.")
-                    break
-
-                current_posts = posts_data['data']['posts']
-                if not current_posts:  # 더 이상 포스트가 없으면 종료
-                    break
-
-            except Exception as e:
-                print(f"API 요청 중 오류 발생: {str(e)}")
-                print(f"Response content: {response.text}")
+            current_posts = posts_data['data']['posts']
+            if not current_posts:  # 더 이상 포스트가 없으면 종료
                 break
 
-            # 각 게시물의 상세 내용을 가져오는 쿼리
-            post_query = """
-            query Post($username: String!, $url_slug: String!) {
-                post(username: $username, url_slug: $url_slug) {
-                    id
-                    title
-                    body
-                    released_at
-                    updated_at
-                    is_private
-                    url_slug
-                }
-            }
-            """
-
-            # 각 게시물의 상세 정보를 가져옵니다
+            # 현재 페이지의 게시물들에 대해 상세 정보 조회
             for post in current_posts:
-                if post['is_private']:
-                    continue
-
-                print(f"\n=== 게시물 상세 정보 요청: {post['title']} ===")
-                time.sleep(0.5)  # API 요청 사이에 0.5초 딜레이
+                post_query = """
+                query Post($username: String!, $url_slug: String!) { 
+                    post(username: $username, url_slug: $url_slug) {
+                        id 
+                        title 
+                        released_at 
+                        updated_at 
+                        body 
+                        is_private 
+                        url_slug 
+                    } 
+                }
+                """
 
                 variables = {
                     "username": self.username,
                     "url_slug": post['url_slug']
                 }
 
-                try:
-                    post_response = requests.post(
-                        self.graphql_url,
-                        json={
-                            'query': post_query,
-                            'variables': variables
-                        },
-                        headers={
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        }
-                    )
+                post_response = requests.post(
+                    self.graphql_url,
+                    json={
+                        'query': post_query,
+                        'variables': variables
+                    }
+                )
 
-                    print(f"Response status: {post_response.status_code}")
-                    print(f"Response text length: {len(post_response.text)}")
-                    print(f"Response preview: {post_response.text[:200]}...")
-
+                if post_response.status_code == 200:
                     post_data = post_response.json()
-                    print("Post detail JSON parsing successful")
-
                     if 'data' in post_data and 'post' in post_data['data'] and post_data['data']['post']:
                         post_detail = post_data['data']['post']
-                        if not post_detail['is_private']:
+                        if not post_detail['is_private']:  # private이 아닌 게시물만 추가
                             all_posts.append(post_detail)
                             print(f"게시물 가져오기 성공: {post_detail['title']}")
                     else:
                         print(f"게시물 상세 정보를 가져올 수 없습니다: {post['title']}")
+                else:
+                    print(f"게시물 상세 정보 가져오기 실패: {post['title']}")
 
-                except json.JSONDecodeError as e:
-                    print(f"JSON parsing error at position {e.pos}: {str(e)}")
-                    print(f"Character at error position: {post_response.text[e.pos:e.pos + 10]}")
-                    continue
-                except Exception as e:
-                    print(f"게시물 상세 정보 가져오기 실패: {str(e)}")
-                    continue
-
-            cursor = current_posts[-1]['id']  # 마지막 포스트의 ID를 다음 커서로 사용
+            # 다음 페이지를 위해 마지막 게시물의 ID를 cursor로 설정
+            cursor = current_posts[-1]['id']
 
         return all_posts
 
