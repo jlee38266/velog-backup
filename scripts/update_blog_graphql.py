@@ -165,8 +165,8 @@ class VelogSync:
                 print("Got less posts than requested limit, assuming no more posts")
                 break
 
-            print(f"\nTotal posts fetched: {len(all_posts)}")
-            return all_posts
+        print(f"\nTotal posts fetched: {len(all_posts)}")
+        return all_posts
 
     def create_or_update_post(self, post: Dict) -> bool:
         """게시글을 생성하거나 업데이트합니다"""
