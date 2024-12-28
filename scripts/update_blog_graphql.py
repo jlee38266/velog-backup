@@ -63,26 +63,24 @@ class VelogSync:
         """GraphQL을 사용하여 모든 게시물 정보 가져오기"""
         # 먼저 모든 게시물의 목록을 가져오는 쿼리
         posts_query = """
-        query Posts($username: String!, $cursor: ID) { 
-            posts(username: $username, cursor: $cursor) { 
-                id
-                title 
-                url_slug 
-            } 
-        }
-        """
+            query Posts($cursor: ID, $username: String, $limit: Int) { 
+                posts(cursor: $cursor, username: $username, limit: $limit) { 
+                    id
+                    title 
+                    url_slug 
+                } 
+            }
+            """
 
         all_posts = []
         cursor = None
 
         # cursor를 사용해 전체 게시물을 가져옴
         while True:
-            # API rate limiting 방지를 위한 지연
-            time.sleep(1)  # 1초 대기
-
             variables = {
                 "username": self.username,
-                "cursor": cursor
+                "cursor": cursor,
+                "limit": 10  # 한 번에 10개씩 요청
             }
 
             response = requests.post(
@@ -90,9 +88,6 @@ class VelogSync:
                 json={
                     'query': posts_query,
                     'variables': variables
-                },
-                headers={
-                    'Content-Type': 'application/json',
                 }
             )
 
