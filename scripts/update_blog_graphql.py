@@ -26,7 +26,7 @@ class VelogSync:
             raise ValueError("Git 사용자 정보가 설정되지 않았습니다.")
 
         # Velog API 주소 설정
-        self.graphql_url = 'https://v3.velog.io/graphql'
+        self.graphql_url = 'https://v2.velog.io/graphql'
 
         # 게시글이 저장될 디렉토리 설정
         self.posts_dir = 'velog-posts'
@@ -61,26 +61,27 @@ class VelogSync:
 
     def get_all_posts(self) -> List[Dict]:
         """GraphQL을 사용하여 모든 게시물 정보 가져오기"""
-        # 먼저 모든 게시물의 목록을 가져오는 쿼리
         posts_query = """
-            query Posts($cursor: ID, $username: String, $limit: Int) { 
-                posts(cursor: $cursor, username: $username, limit: $limit) { 
-                    id
-                    title 
-                    url_slug 
-                } 
+        query velogPosts($input: GetPostsInput!) {
+            posts(input: $input) {
+                id
+                title 
+                url_slug 
             }
-            """
+        }
+        """
 
         all_posts = []
         cursor = None
 
-        # cursor를 사용해 전체 게시물을 가져옴
         while True:
             variables = {
-                "username": self.username,
-                "cursor": cursor,
-                "limit": 10  # 한 번에 10개씩 요청
+                "input": {
+                    "username": self.username,
+                    "cursor": cursor,
+                    "limit": 10,
+                    "temp_only": False
+                }
             }
 
             response = requests.post(
@@ -91,9 +92,8 @@ class VelogSync:
                 }
             )
 
-            # 응답 상태 코드와 내용 로깅
             print(f"Response status: {response.status_code}")
-            print(f"Response content: {response.text[:200]}")  # 처음 200자만 출력
+            print(f"Response content: {response.text[:200]}")
 
             if response.status_code != 200:
                 print(f"게시물 목록 가져오기 실패: {response.status_code}")
@@ -105,14 +105,14 @@ class VelogSync:
                 return []
 
             current_posts = posts_data['data']['posts']
-            if not current_posts:  # 더 이상 포스트가 없으면 종료
+            if not current_posts:
                 break
 
-            # 현재 페이지의 게시물들에 대해 상세 정보 조회
+            # 개별 게시물 상세 정보 조회
             for post in current_posts:
                 post_query = """
-                query Post($username: String!, $url_slug: String!) { 
-                    post(username: $username, url_slug: $url_slug) {
+                query velogPost($input: GetPostInput!) { 
+                    post(input: $input) {
                         id 
                         title 
                         released_at 
@@ -124,16 +124,21 @@ class VelogSync:
                 }
                 """
 
-                variables = {
-                    "username": self.username,
-                    "url_slug": post['url_slug']
+                post_variables = {
+                    "input": {
+                        "username": self.username,
+                        "url_slug": post['url_slug']
+                    }
                 }
+
+                # API 요청 간격 조절
+                time.sleep(0.5)
 
                 post_response = requests.post(
                     self.graphql_url,
                     json={
                         'query': post_query,
-                        'variables': variables
+                        'variables': post_variables
                     }
                 )
 
@@ -141,7 +146,7 @@ class VelogSync:
                     post_data = post_response.json()
                     if 'data' in post_data and 'post' in post_data['data'] and post_data['data']['post']:
                         post_detail = post_data['data']['post']
-                        if not post_detail['is_private']:  # private이 아닌 게시물만 추가
+                        if not post_detail['is_private']:
                             all_posts.append(post_detail)
                             print(f"게시물 가져오기 성공: {post_detail['title']}")
                     else:
@@ -149,7 +154,6 @@ class VelogSync:
                 else:
                     print(f"게시물 상세 정보 가져오기 실패: {post['title']}")
 
-            # 다음 페이지를 위해 마지막 게시물의 ID를 cursor로 설정
             cursor = current_posts[-1]['id']
 
         return all_posts
