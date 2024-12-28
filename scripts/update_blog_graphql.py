@@ -1,6 +1,8 @@
 # scripts/update_blog_graphql.py
 
 import glob  # 특정 패턴에 맞는 파일 이름 찾는 모듈 라이브러리
+import time
+
 import frontmatter  # markdown 파일의 메타데이터를 처리하기 위한 라이브러리
 import git  # Git 작업을 위한 라이브러리
 import os  # 파일/디렉토리 작업을 위한 라이브러리
@@ -58,84 +60,104 @@ class VelogSync:
 
     def get_all_posts(self) -> List[Dict]:
         """GraphQL을 사용하여 모든 게시물 정보 가져오기"""
-        # 1. 먼저 모든 게시물의 기본 정보를 가져옵니다
+        # 먼저 모든 게시물의 목록을 가져오는 쿼리
         posts_query = """
-        query Posts($username: String!) { 
-            posts(username: $username) { 
-                title 
-                url_slug 
-            } 
+        query velogPosts($input: GetPostsInput!) {
+            posts(input: $input) {
+                id
+                title
+                released_at
+                updated_at
+                is_private
+                url_slug
+            }
         }
         """
 
-        # username 변수 추가
-        variables = {
-            "username": self.username
-        }
+        all_posts = []
+        cursor = None
 
-        response = requests.post(
-            self.graphql_url,
-            json={
-                'query': posts_query,
-                'variables': variables  # 변수 전달
-            }
-        )
-
-        if response.status_code != 200:
-            print(f"게시물 목록 가져오기 실패: {response.status_code}")
-            return []
-
-        posts_data = response.json()
-        if 'data' not in posts_data or 'posts' not in posts_data['data']:
-            print("게시물 목록 형식이 올바르지 않습니다.")
-            return []
-
-        posts_list = posts_data['data']['posts']
-        complete_posts = []
-
-        # 2. 각 게시물의 상세 정보를 가져옵니다
-        for post in posts_list:
-            post_query = """
-            query Post($username: String!, $url_slug: String!) { 
-                post(username: $username, url_slug: $url_slug) {
-                    id 
-                    title 
-                    released_at 
-                    updated_at 
-                    body 
-                    is_private 
-                    url_slug 
-                } 
-            }
-            """
-
+        # 페이지네이션을 통해 모든 게시물 목록을 가져옵니다
+        while True:
             variables = {
-                "username": self.username,
-                "url_slug": post['url_slug']
+                "input": {
+                    "username": self.username,
+                    "cursor": cursor,
+                    "limit": 10,
+                    "tag": ""
+                }
             }
 
-            post_response = requests.post(
+            response = requests.post(
                 self.graphql_url,
                 json={
-                    'query': post_query,
+                    'query': posts_query,
                     'variables': variables
                 }
             )
 
-            if post_response.status_code == 200:
-                post_data = post_response.json()
-                if 'data' in post_data and 'post' in post_data['data'] and post_data['data']['post']:
-                    post_detail = post_data['data']['post']
-                    # private이 아닌 게시물만 추가
-                    if not post_detail['is_private']:
-                        complete_posts.append(post_detail)
-                    print(f"게시물 가져오기 성공: {post_detail['title']}")
-                else:
-                    print(f"게시물 상세 정보를 가져올 수 없습니다: {post['title']}")
-            else:
-                print(f"게시물 상세 정보 가져오기 실패: {post['title']}")
+            if response.status_code != 200:
+                print(f"게시물 목록 가져오기 실패: {response.status_code}")
+                break
 
-        return complete_posts
+            posts_data = response.json()
+            if 'data' not in posts_data or 'posts' not in posts_data['data']:
+                print("게시물 목록 형식이 올바르지 않습니다.")
+                break
+
+            current_posts = posts_data['data']['posts']
+            if not current_posts:  # 더 이상 포스트가 없으면 종료
+                break
+
+            # 각 게시물의 상세 내용을 가져오는 쿼리
+            post_query = """
+            query Post($username: String!, $url_slug: String!) {
+                post(username: $username, url_slug: $url_slug) {
+                    id
+                    title
+                    body
+                    released_at
+                    updated_at
+                    is_private
+                    url_slug
+                }
+            }
+            """
+
+            # 각 게시물의 상세 정보를 가져옵니다
+            for post in current_posts:
+                if post['is_private']:
+                    continue
+
+                # 여기에 딜레이 추가
+                time.sleep(0.5)  # API 요청 사이에 0.5초 딜레이
+
+                variables = {
+                    "username": self.username,
+                    "url_slug": post['url_slug']
+                }
+
+                post_response = requests.post(
+                    self.graphql_url,
+                    json={
+                        'query': post_query,
+                        'variables': variables
+                    }
+                )
+
+                if post_response.status_code == 200:
+                    post_data = post_response.json()
+                    if 'data' in post_data and 'post' in post_data['data'] and post_data['data']['post']:
+                        post_detail = post_data['data']['post']
+                        if not post_detail['is_private']:
+                            all_posts.append(post_detail)
+                            print(f"게시물 가져오기 성공: {post_detail['title']}")
+                    else:
+                        print(f"게시물 상세 정보를 가져올 수 없습니다: {post['title']}")
+
+            cursor = current_posts[-1]['id']  # 마지막 포스트의 ID를 다음 커서로 사용
+
+        return all_posts
 
     def create_or_update_post(self, post: Dict) -> bool:
         """게시글을 생성하거나 업데이트합니다"""
@@ -149,7 +171,7 @@ class VelogSync:
             # 날짜 정보 변환
             date_str = datetime.fromisoformat(post['released_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d')
             current_date = datetime.now().strftime('%Y-%m-%d')
-            last_modified = datetime.fromisoformat(post['updated_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d')
+            # last_modified = datetime.fromisoformat(post['updated_at'].replace('Z', '+00:00')).strftime('%Y-%m-%d')
 
             # 변경사항 확인
             is_new_post = not existing_filepath or not os.path.exists(existing_filepath)
@@ -163,8 +185,8 @@ class VelogSync:
                     changes.append("title")
                 if existing_post.metadata.get('url') != post_url:
                     changes.append("url")
-                if existing_post.metadata.get('last_modified') != last_modified:
-                    changes.append("last_modified")
+                # if existing_post.metadata.get('last_modified') != last_modified:
+                #     changes.append("last_modified")
 
             # 파일명 설정
             filename = f"{date_str}-{self.sanitize_filename(post['title'])}.md"
@@ -175,7 +197,7 @@ class VelogSync:
                 'title': post['title'],
                 'date': date_str,
                 'url': post_url,
-                'last_modified': last_modified,
+                # 'last_modified': last_modified,
                 '_id': post['id']
             }
 
