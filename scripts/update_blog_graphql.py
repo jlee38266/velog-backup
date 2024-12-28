@@ -1,6 +1,7 @@
 # scripts/update_blog_graphql.py
 
 import glob  # 특정 패턴에 맞는 파일 이름 찾는 모듈 라이브러리
+import json
 import time
 
 import frontmatter  # markdown 파일의 메타데이터를 처리하기 위한 라이브러리
@@ -80,31 +81,59 @@ class VelogSync:
 
         # 페이지네이션을 통해 모든 게시물 목록을 가져옵니다
         while True:
-            variables = {
-                "input": {
-                    "username": self.username,
-                    "cursor": cursor,
-                    "limit": 10,
-                    "tag": ""
-                }
-            }
-
             try:
+                print("\n=== 새로운 페이지 요청 시작 ===")
+                if cursor:
+                    print(f"Current cursor: {cursor}")
+
                 response = requests.post(
                     self.graphql_url,
                     json={
                         'query': posts_query,
-                        'variables': variables
+                        'variables': {
+                            "input": {
+                                "username": self.username,
+                                "cursor": cursor,
+                                "limit": 10,
+                                "tag": ""
+                            }
+                        }
+                    },
+                    headers={
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     }
                 )
 
                 # 응답 디버깅을 위한 코드 추가
-                print(f"Response status: {response.status_code}")
-                print(f"Response headers: {response.headers}")
-                print(f"Response content: {response.text[:200]}...")  # 처음 200자만 출력
+                print(f"\nResponse status: {response.status_code}")
+                print(f"Response headers: {dict(response.headers)}")
 
-                # 직접 response.text를 출력해보기
-                print(f"Full response content: {response.text}")
+                # response.text를 변수에 저장하고 검사
+                response_text = response.text
+                print(f"Response text length: {len(response_text)}")
+                print(f"Response text preview: {response_text[:200]}...")
+
+                # JSON 파싱을 별도의 try-except로 분리
+                try:
+                    posts_data = json.loads(response_text)
+                    print("JSON parsing successful")
+                except json.JSONDecodeError as e:
+                    print(f"JSON parsing error at position {e.pos}: {str(e)}")
+                    print(f"Character at error position: {response_text[e.pos:e.pos + 10]}")
+                    break
+
+                if 'data' not in posts_data or 'posts' not in posts_data['data']:
+                    print("게시물 목록 형식이 올바르지 않습니다.")
+                    print(f"Response data structure: {posts_data.keys()}")
+                    break
+
+                current_posts = posts_data['data']['posts']
+                if not current_posts:
+                    print("더 이상 게시물이 없습니다.")
+                    break
+
+                print(f"Retrieved {len(current_posts)} posts in this page")
 
                 if response.status_code != 200:
                     print(f"게시물 목록 가져오기 실패: {response.status_code}")
