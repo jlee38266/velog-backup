@@ -10,6 +10,7 @@ import requests  # HTTP 요청을 위한 라이브러리
 from datetime import datetime  # 날짜/시간 처리를 위한 라이브러리
 from typing import Dict, List  # 타입 힌트를 위한 라이브러리
 
+
 class VelogSync:
     def __init__(self):
         """클래스 초기화 - 프로그램 시작시 필요한 기본 설정을 합니다"""
@@ -88,25 +89,36 @@ class VelogSync:
                 }
             }
 
-            response = requests.post(
-                self.graphql_url,
-                json={
-                    'query': posts_query,
-                    'variables': variables
-                }
-            )
+            try:
+                response = requests.post(
+                    self.graphql_url,
+                    json={
+                        'query': posts_query,
+                        'variables': variables
+                    }
+                )
 
-            if response.status_code != 200:
-                print(f"게시물 목록 가져오기 실패: {response.status_code}")
-                break
+                # 응답 디버깅을 위한 코드 추가
+                print(f"Response status: {response.status_code}")
+                print(f"Response headers: {response.headers}")
+                print(f"Response content: {response.text[:200]}...")  # 처음 200자만 출력
 
-            posts_data = response.json()
-            if 'data' not in posts_data or 'posts' not in posts_data['data']:
-                print("게시물 목록 형식이 올바르지 않습니다.")
-                break
+                if response.status_code != 200:
+                    print(f"게시물 목록 가져오기 실패: {response.status_code}")
+                    break
 
-            current_posts = posts_data['data']['posts']
-            if not current_posts:  # 더 이상 포스트가 없으면 종료
+                posts_data = response.json()
+                if 'data' not in posts_data or 'posts' not in posts_data['data']:
+                    print("게시물 목록 형식이 올바르지 않습니다.")
+                    break
+
+                current_posts = posts_data['data']['posts']
+                if not current_posts:  # 더 이상 포스트가 없으면 종료
+                    break
+
+            except Exception as e:
+                print(f"API 요청 중 오류 발생: {str(e)}")
+                print(f"Response content: {response.text}")
                 break
 
             # 각 게시물의 상세 내용을 가져오는 쿼리
