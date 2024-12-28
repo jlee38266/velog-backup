@@ -103,6 +103,9 @@ class VelogSync:
                 print(f"Response headers: {response.headers}")
                 print(f"Response content: {response.text[:200]}...")  # 처음 200자만 출력
 
+                # 직접 response.text를 출력해보기
+                print(f"Full response content: {response.text}")
+
                 if response.status_code != 200:
                     print(f"게시물 목록 가져오기 실패: {response.status_code}")
                     break
