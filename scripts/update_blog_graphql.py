@@ -1,15 +1,14 @@
 # scripts/update_blog_graphql.py
 
 import glob  # 특정 패턴에 맞는 파일 이름 찾는 모듈 라이브러리
-import json
+import os  # 파일/디렉토리 작업을 위한 라이브러리
 import time
+from datetime import datetime  # 날짜/시간 처리를 위한 라이브러리
+from typing import Dict, List  # 타입 힌트를 위한 라이브러리
 
 import frontmatter  # markdown 파일의 메타데이터를 처리하기 위한 라이브러리
 import git  # Git 작업을 위한 라이브러리
-import os  # 파일/디렉토리 작업을 위한 라이브러리
 import requests  # HTTP 요청을 위한 라이브러리
-from datetime import datetime  # 날짜/시간 처리를 위한 라이브러리
-from typing import Dict, List  # 타입 힌트를 위한 라이브러리
 
 
 class VelogSync:
@@ -78,6 +77,9 @@ class VelogSync:
 
         # cursor를 사용해 전체 게시물을 가져옴
         while True:
+            # API rate limiting 방지를 위한 지연
+            time.sleep(1)  # 1초 대기
+
             variables = {
                 "username": self.username,
                 "cursor": cursor
@@ -88,8 +90,15 @@ class VelogSync:
                 json={
                     'query': posts_query,
                     'variables': variables
+                },
+                headers={
+                    'Content-Type': 'application/json',
                 }
             )
+
+            # 응답 상태 코드와 내용 로깅
+            print(f"Response status: {response.status_code}")
+            print(f"Response content: {response.text[:200]}")  # 처음 200자만 출력
 
             if response.status_code != 200:
                 print(f"게시물 목록 가져오기 실패: {response.status_code}")
