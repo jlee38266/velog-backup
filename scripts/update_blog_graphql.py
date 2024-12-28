@@ -62,8 +62,8 @@ class VelogSync:
     def get_all_posts(self) -> List[Dict]:
         """GraphQL을 사용하여 모든 게시물 정보 가져오기"""
         posts_query = """
-        query velogPosts($input: GetPostsInput!) {
-            posts(input: $input) {
+        query Posts($username: String, $cursor: ID, $limit: Int) {
+            posts(username: $username, cursor: $cursor, limit: $limit) {
                 id
                 title 
                 url_slug 
@@ -76,12 +76,9 @@ class VelogSync:
 
         while True:
             variables = {
-                "input": {
-                    "username": self.username,
-                    "cursor": cursor,
-                    "limit": 10,
-                    "temp_only": False
-                }
+                "username": self.username,
+                "cursor": cursor,
+                "limit": 10
             }
 
             response = requests.post(
