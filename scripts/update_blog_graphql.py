@@ -25,7 +25,7 @@ class VelogSync:
             raise ValueError("Git 사용자 정보가 설정되지 않았습니다.")
 
         # Velog API 주소 설정
-        self.graphql_url = 'https://api.velog.io/graphql'
+        self.graphql_url = 'https://v3.velog.io/graphql'
 
         # 게시글이 저장될 디렉토리 설정
         self.posts_dir = 'velog-posts'
