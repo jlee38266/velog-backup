@@ -66,7 +66,8 @@ class VelogSync:
             posts(username: $username, cursor: $cursor, limit: $limit) {
                 id
                 title 
-                url_slug 
+                url_slug
+                released_at
             }
         }
         """
