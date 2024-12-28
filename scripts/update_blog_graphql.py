@@ -173,7 +173,7 @@ class VelogSync:
                 if post['is_private']:
                     continue
 
-                # 여기에 딜레이 추가
+                print(f"\n=== 게시물 상세 정보 요청: {post['title']} ===")
                 time.sleep(0.5)  # API 요청 사이에 0.5초 딜레이
 
                 variables = {
@@ -181,16 +181,26 @@ class VelogSync:
                     "url_slug": post['url_slug']
                 }
 
-                post_response = requests.post(
-                    self.graphql_url,
-                    json={
-                        'query': post_query,
-                        'variables': variables
-                    }
-                )
+                try:
+                    post_response = requests.post(
+                        self.graphql_url,
+                        json={
+                            'query': post_query,
+                            'variables': variables
+                        },
+                        headers={
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    )
 
-                if post_response.status_code == 200:
+                    print(f"Response status: {post_response.status_code}")
+                    print(f"Response text length: {len(post_response.text)}")
+                    print(f"Response preview: {post_response.text[:200]}...")
+
                     post_data = post_response.json()
+                    print("Post detail JSON parsing successful")
+
                     if 'data' in post_data and 'post' in post_data['data'] and post_data['data']['post']:
                         post_detail = post_data['data']['post']
                         if not post_detail['is_private']:
@@ -198,6 +208,14 @@ class VelogSync:
                             print(f"게시물 가져오기 성공: {post_detail['title']}")
                     else:
                         print(f"게시물 상세 정보를 가져올 수 없습니다: {post['title']}")
+
+                except json.JSONDecodeError as e:
+                    print(f"JSON parsing error at position {e.pos}: {str(e)}")
+                    print(f"Character at error position: {post_response.text[e.pos:e.pos + 10]}")
+                    continue
+                except Exception as e:
+                    print(f"게시물 상세 정보 가져오기 실패: {str(e)}")
+                    continue
 
             cursor = current_posts[-1]['id']  # 마지막 포스트의 ID를 다음 커서로 사용
 
