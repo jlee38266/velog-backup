@@ -74,6 +74,7 @@ class VelogSync:
         all_posts = []
         cursor = None
         page_count = 0
+        seen_posts = set()  # 이미 처리한 게시물 추적
 
         while True:
             page_count += 1
@@ -83,7 +84,7 @@ class VelogSync:
             variables = {
                 "username": self.username,
                 "cursor": cursor,
-                "limit": 10
+                "limit": 20
             }
 
             response = requests.post(
@@ -113,28 +114,27 @@ class VelogSync:
 
             # 개별 게시물 상세 정보 조회
             for post in current_posts:
+                if post['id'] in seen_posts:  # 중복 게시물 건너뛰기
+                    continue
+                seen_posts.add(post['id'])
                 post_query = """
-                query Post($username: String, $url_slug: String) { 
-                    post(username: $username, url_slug: $url_slug) {
-                        id 
-                        title 
-                        released_at 
-                        updated_at 
-                        body 
-                        is_private 
-                        url_slug 
-                    } 
-                }
-                """
-
+                    query Post($username: String, $url_slug: String) { 
+                        post(username: $username, url_slug: $url_slug) {
+                            id 
+                            title 
+                            released_at 
+                            updated_at 
+                            body 
+                            is_private 
+                            url_slug 
+                        } 
+                    }
+                    """
                 post_variables = {
                     "username": self.username,
                     "url_slug": post['url_slug']
                 }
-
-                # API 요청 간격 조절
-                time.sleep(0.5)
-
+                time.sleep(0.5)  # API 요청 간격 조절
                 post_response = requests.post(
                     self.graphql_url,
                     json={
@@ -142,24 +142,23 @@ class VelogSync:
                         'variables': post_variables
                     }
                 )
-
                 if post_response.status_code == 200:
                     post_data = post_response.json()
                     if 'data' in post_data and 'post' in post_data['data'] and post_data['data']['post']:
                         post_detail = post_data['data']['post']
                         if not post_detail['is_private']:
                             all_posts.append(post_detail)
-                            print(f"게시물 가져오기 성공: {post_detail['title']}")
+                            print(f"게시물 가져오기 성공: {post_detail['title']} ({post_detail['released_at']})")
                     else:
                         print(f"게시물 상세 정보를 가져올 수 없습니다: {post['title']}")
                 else:
                     print(f"게시물 상세 정보 가져오기 실패: {post['title']}")
-
-            cursor = current_posts[-1]['id']
-            print(f"Next cursor will be: {cursor}")
-
-        # while 루프가 끝난 후 여기서 반환
-        print(f"\nTotal posts fetched: {len(all_posts)}")  # 총 가져온 게시물 수 출력
+            if len(current_posts) > 0:
+                cursor = current_posts[-1]['id']
+                print(f"Next cursor will be: {cursor} (released_at: {current_posts[-1]['released_at']})")
+            else:
+                break
+        print(f"\nTotal posts fetched: {len(all_posts)}")
         return all_posts
 
     def create_or_update_post(self, post: Dict) -> bool:
