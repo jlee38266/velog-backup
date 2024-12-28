@@ -73,8 +73,13 @@ class VelogSync:
 
         all_posts = []
         cursor = None
+        page_count = 0
 
         while True:
+            page_count += 1
+            print(f"\n--- Fetching page {page_count} ---")
+            print(f"Current cursor: {cursor}")
+
             variables = {
                 "username": self.username,
                 "cursor": cursor,
@@ -102,7 +107,10 @@ class VelogSync:
                 return []
 
             current_posts = posts_data['data']['posts']
-            if not current_posts:
+            print(f"Found {len(current_posts)} posts in this page")
+
+            if not current_posts:  # 더 이상 포스트가 없으면 종료
+                print("No more posts found, breaking loop")
                 break
 
             # 개별 게시물 상세 정보 조회
@@ -150,6 +158,7 @@ class VelogSync:
                     print(f"게시물 상세 정보 가져오기 실패: {post['title']}")
 
             cursor = current_posts[-1]['id']
+            print(f"Next cursor will be: {cursor}")
 
             return all_posts
 
