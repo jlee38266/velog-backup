@@ -108,8 +108,8 @@ class VelogSync:
             # 개별 게시물 상세 정보 조회
             for post in current_posts:
                 post_query = """
-                query velogPost($input: GetPostInput!) { 
-                    post(input: $input) {
+                query Post($username: String, $url_slug: String) { 
+                    post(username: $username, url_slug: $url_slug) {
                         id 
                         title 
                         released_at 
@@ -122,10 +122,8 @@ class VelogSync:
                 """
 
                 post_variables = {
-                    "input": {
-                        "username": self.username,
-                        "url_slug": post['url_slug']
-                    }
+                    "username": self.username,
+                    "url_slug": post['url_slug']
                 }
 
                 # API 요청 간격 조절
@@ -153,7 +151,7 @@ class VelogSync:
 
             cursor = current_posts[-1]['id']
 
-        return all_posts
+            return all_posts
 
     def create_or_update_post(self, post: Dict) -> bool:
         """게시글을 생성하거나 업데이트합니다"""
