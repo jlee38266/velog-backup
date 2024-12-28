@@ -95,8 +95,6 @@ class VelogSync:
             )
 
             print(f"Response status: {response.status_code}")
-            print(f"Response content: {response.text[:200]}")
-
             if response.status_code != 200:
                 print(f"게시물 목록 가져오기 실패: {response.status_code}")
                 return []
@@ -160,7 +158,9 @@ class VelogSync:
             cursor = current_posts[-1]['id']
             print(f"Next cursor will be: {cursor}")
 
-            return all_posts
+        # while 루프가 끝난 후 여기서 반환
+        print(f"\nTotal posts fetched: {len(all_posts)}")  # 총 가져온 게시물 수 출력
+        return all_posts
 
     def create_or_update_post(self, post: Dict) -> bool:
         """게시글을 생성하거나 업데이트합니다"""
