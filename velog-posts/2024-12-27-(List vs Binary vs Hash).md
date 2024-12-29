@@ -1,14 +1,13 @@
 ---
 _id: 1389aac5-5a4b-4433-86f9-ef97096a1cf8
 date: '2024-12-27'
-title: (List vs Binary vs Hash) 제목 수정
+title: (List vs Binary vs Hash)
 url: https://velog.io/@jlee38266/List-vs-Binary-vs-Hash
 ---
 
 # 파이썬 알고리즘: 검색 방식 비교 분석 
 
 > 코딩 테스트나 실무에서 자주 사용되는 세 가지 검색 방식의 특징과 성능을 비교 분석
-내용도 일부 수정
 
 ## 검색 방식별 특징 비교
 
