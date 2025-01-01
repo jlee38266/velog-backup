@@ -1,0 +1,1 @@
+[![Velog Posts GraphQL Sync](https://github.com/jlee38266/velog-backup/actions/workflows/velog-sync-graphql.yml/badge.svg?branch=main)](https://github.com/jlee38266/velog-backup/actions/workflows/velog-sync-graphql.yml)
