@@ -73,7 +73,7 @@ aws configure --profile samsamohoh-infra-terraform
 - hashicorp/terraform 도커 이미지는 aws cli를 포함한 이미지가 아님
 - aws cli가 없기 때문에 ~/.aws/credentials 을 volume에 마운트 하더라도 직접 읽어 오지 못함
 
-_이것 때문에 aws cli 쓸 수 있는 이미지를 쓸까 고민하다가 설정 관리에 피로함을 느낌._
+_이것 때문에 aws cli 포함된 terraform image를 쓸까 고민하다가 설정 관리에 피로함을 느낌._
 ```bash
 # profile만 활용해서 자격증명까지 되기를 기대했으나...도커는 호락호락 하지 않음
 alias terraform='docker run --rm -it \
@@ -191,14 +191,14 @@ terraform apply
 ```
 
 > ⚠️ 주의사항
-- 해당 설정을 쓰게 되는 경우 Docker를 사용하므로 로컬에 Terraform을 설치하면 명령어가 명확하지 않음 (물론 별칭을 바꾸면 해결되긴 함)
+- 해당 설정을 쓰게 되는 경우 Docker를 사용하므로 local에 Terraform을 설치하면 docker와 local 중 어디를 기준으로 명령어가 전달되는지 명확하지 않을 수 있음 (물론 alias을 바꾸면 해결되긴 함)
 - WSL2를 사용하는 경우 경로 문제에 주의 필요.
 
 ## 6. 결론
 - 처음 terraform을 설치하는 것보다 docker를 쓰면 편하지 않을까 했지만, 생각보다 명령어에 관련된 설정을 만들지 않으면 굉장히 불편하다는 점
-- 실제 prod 환경인 aws 같은 서비스를 이용할 때는 자격 증명과 더불어 고려해야 하는 부분들이 많아짐
+- 실제 prod 환경인 aws 같은 서비스를 이용할 때는 자격 증명과 더불어 고려해야 하는 부분들이 많아짐 (docker image를 처음부터 aws cli가 탑재된 것 활용하거나, 하드 코딩으로 자격 증명이 될 수 있도록 신경써야 하는점)
 - terraform의 버전 차이에 따른 테스트를 한다던지, 팀원간의 버전을 모두 통일해야 하는 상황이라면 써봄직 한 것 같음
-- terraform의 버전 차이로 호완성 검증을 진행하는게 아니라면 docker로 terraform을 쓰는건 불편함
+- terraform의 버전 차이로 호환성 검증을 진행하는게 아니라면 docker로 terraform을 쓰는건 불편함
 
 ### 로컬에 terraform 설치
 - [Terraform Install](https://developer.hashicorp.com/terraform/install)
