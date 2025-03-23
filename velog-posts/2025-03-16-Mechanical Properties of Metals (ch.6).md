@@ -1,7 +1,7 @@
 ---
 _id: 443c368a-c428-454a-b321-39e7e0992658
 date: '2025-03-16'
-title: Mechanical Properties of Metals
+title: Mechanical Properties of Metals (ch.6)
 url: https://velog.io/@jlee38266/Mechanical-Properties-of-Materials
 ---
 
